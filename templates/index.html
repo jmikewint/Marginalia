@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Syllabus Translator</title>
     <style>
@@ -11,24 +10,9 @@
             padding: 0 20px;
             background: #f7f7f8;
             color: #1a1a1a;
-
-
         }
-
-        h1 {
-            font-size: 28px;
-            margin-bottom: 4px;
-        }
-
-        .subtitle {
-            color: #666;
-            margin-bottom: 24px;
-        }
-
-
-
-
-
+        h1 { font-size: 28px; margin-bottom: 4px; }
+        .subtitle { color: #666; margin-bottom: 24px; }
         textarea {
             width: 100%;
             padding: 12px;
@@ -39,7 +23,6 @@
             resize: vertical;
             box-sizing: border-box;
         }
-
         button {
             margin-top: 12px;
             padding: 10px 24px;
@@ -50,24 +33,16 @@
             font-size: 14px;
             cursor: pointer;
         }
-
-        button:hover {
-            background: #333;
-        }
-
-        button:disabled {
-            background: #999;
-            cursor: not-allowed;
-        }
+        button:hover { background: #333; }
+        button:disabled { background: #999; cursor: not-allowed; }
 
         .section {
             background: white;
             border-radius: 10px;
             padding: 20px;
             margin-top: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
-
         .section h2 {
             font-size: 15px;
             text-transform: uppercase;
@@ -75,19 +50,13 @@
             color: #666;
             margin-top: 0;
         }
-
-        .grading-row,
-        .deadline-row {
+        .grading-row, .deadline-row {
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
             border-bottom: 1px solid #f0f0f0;
         }
-
-        .grading-row:last-child,
-        .deadline-row:last-child {
-            border-bottom: none;
-        }
+        .grading-row:last-child, .deadline-row:last-child { border-bottom: none; }
 
         .flag {
             padding: 12px;
@@ -96,17 +65,8 @@
             font-size: 14px;
             line-height: 1.5;
         }
-
-        .flag.high {
-            background: #fef2f2;
-            border-left: 4px solid #dc2626;
-        }
-
-        .flag.medium {
-            background: #fffbeb;
-            border-left: 4px solid #d97706;
-        }
-
+        .flag.high { background: #fef2f2; border-left: 4px solid #dc2626; }
+        .flag.medium { background: #fffbeb; border-left: 4px solid #d97706; }
         .flag-severity {
             font-size: 11px;
             text-transform: uppercase;
@@ -114,20 +74,14 @@
             letter-spacing: 0.5px;
             margin-bottom: 4px;
         }
-
-        .flag.high .flag-severity {
-            color: #dc2626;
-        }
-
-        .flag.medium .flag-severity {
-            color: #d97706;
-        }
+        .flag.high .flag-severity { color: #dc2626; }
+        .flag.medium .flag-severity { color: #d97706; }
     </style>
 </head>
-
 <body>
     <h1>Syllabus Translator</h1>
     <p class="subtitle">Paste your syllabus below and get the important stuff, plainly.</p>
+
     <div style="margin-bottom: 16px;">
         <label style="display:block; margin-bottom: 6px; font-size: 14px; color: #666;">
             Upload a PDF or Word file:
@@ -135,6 +89,7 @@
         <input type="file" id="syllabus-file" accept=".pdf,.docx">
     </div>
     <p style="text-align:center; color:#999; margin: 12px 0;">— or paste text below —</p>
+
     <textarea id="syllabus-input" rows="12" placeholder="Paste your syllabus text here..."></textarea>
     <br>
     <button id="analyze-btn">Analyze</button>
@@ -142,5 +97,4 @@
 
     <script src="/static/script.js"></script>
 </body>
-
 </html>

@@ -62,10 +62,29 @@ document.getElementById("analyze-btn").addEventListener("click", async () => {
             data.deadlines.forEach(d => {
                 html += `<div class="deadline-row"><span>${d.item}</span><strong>${d.date}</strong></div>`;
             });
+            html += `<button id="export-cal-btn" style="margin-top:12px;">Export to Calendar</button>`;
             html += `</div>`;
         }
 
         resultsDiv.innerHTML = html || `<div class="section">No data extracted.</div>`;
+
+        if (data.deadlines && data.deadlines.length > 0) {
+            document.getElementById("export-cal-btn").addEventListener("click", async () => {
+                const calResponse = await fetch("/export-calendar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ deadlines: data.deadlines })
+                });
+
+                const blob = await calResponse.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "syllabus-deadlines.ics";
+                a.click();
+                window.URL.revokeObjectURL(url);
+            });
+        }
 
     } catch (err) {
         resultsDiv.innerHTML = `<div class="section">Something went wrong: ${err.message}</div>`;
