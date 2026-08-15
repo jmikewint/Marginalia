@@ -91,7 +91,28 @@ def export_calendar():
         mimetype="text/calendar",
         headers={"Content-Disposition": "attachment; filename=syllabus-deadlines.ics"}
     )
+@app.route("/dashboard", methods=["GET"])
+def dashboard_data():
+    all_syllabi = db.list_syllabi()
+    combined_deadlines = []
 
+    for item in all_syllabi:
+        record = db.get_syllabus(item["id"])
+        data = json.loads(record["data_json"])
+        for deadline in data.get("deadlines", []):
+            combined_deadlines.append({
+                "course": record["course_name"],
+                "item": deadline.get("item", ""),
+                "date": deadline.get("date", ""),
+                "date_sort": _parse_date_guess(deadline.get("date", "")) or "99999999"
+            })
+
+    combined_deadlines.sort(key=lambda d: d["date_sort"])
+
+    return jsonify({
+        "course_count": len(all_syllabi),
+        "deadlines": combined_deadlines
+    })
 
 def _build_ics(deadlines):
     lines = [

@@ -144,6 +144,32 @@ document.getElementById("analyze-btn").addEventListener("click", async () => {
         currentData = data;
         renderResults(data);
 
+        async function renderDashboard() {
+    const res = await fetch("/dashboard");
+    const data = await res.json();
+    const resultsDiv = document.getElementById("results");
+
+    if (data.deadlines.length === 0) {
+        resultsDiv.innerHTML = `<div class="section">No saved syllabi yet — analyze and save one first.</div>`;
+        return;
+    }
+
+    let html = `<div class="section">
+        <h2>All deadlines across ${data.course_count} saved ${data.course_count === 1 ? "syllabus" : "syllabi"}</h2>`;
+
+    data.deadlines.forEach(d => {
+        html += `<div class="deadline-row">
+            <span><strong style="color:#666; font-size:12px;">${d.course}</strong><br>${d.item}</span>
+            <strong>${d.date}</strong>
+        </div>`;
+    });
+
+    html += `</div>`;
+    resultsDiv.innerHTML = html;
+}
+
+document.getElementById("dashboard-btn").addEventListener("click", renderDashboard);
+
     } catch (err) {
         resultsDiv.innerHTML = `<div class="section">Something went wrong: ${err.message}</div>`;
     } finally {
