@@ -1,3 +1,5 @@
+<img width="1906" height="907" alt="Screen 2" src="https://github.com/user-attachments/assets/4fda5a05-e56b-4d82-b56c-20088ea537e2" />
+<img width="1904" height="910" alt="Screen1" src="https://github.com/user-attachments/assets/ba4b889d-d0c0-4dbb-859c-154c5330a9c8" />
 # Syllabus Translator
 
 A tool that extracts the important stuff from a course syllabus — grading breakdown, deadlines, and easy-to-miss policies that could hurt your grade — and presents it clearly instead of making you dig through pages of dense text.
