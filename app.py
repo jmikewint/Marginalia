@@ -2,10 +2,12 @@ from flask import Flask, request, jsonify, render_template, Response
 from claude_client import analyze_syllabus
 from file_parser import extract_text_from_file
 from datetime import datetime
+import db
 import json
 import re
 
 app = Flask(__name__)
+db.init_db()
 
 @app.route("/")
 def home():
@@ -15,7 +17,6 @@ def home():
 def analyze():
     syllabus_text = ""
 
-    # Check if a file was uploaded
     if "syllabus_file" in request.files and request.files["syllabus_file"].filename != "":
         file = request.files["syllabus_file"]
         try:
@@ -23,7 +24,6 @@ def analyze():
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
     else:
-        # Fall back to pasted text
         data = request.get_json(silent=True) or {}
         syllabus_text = data.get("syllabus_text", "")
 
@@ -39,6 +39,41 @@ def analyze():
         return jsonify({"error": "Could not parse response"}), 500
 
     return jsonify(parsed)
+
+
+@app.route("/save", methods=["POST"])
+def save():
+    data = request.get_json(silent=True) or {}
+    course_name = data.get("course_name", "").strip()
+    result_data = data.get("data")
+
+    if not course_name or not result_data:
+        return jsonify({"error": "Missing course name or data"}), 400
+
+    new_id = db.save_syllabus(course_name, json.dumps(result_data))
+    return jsonify({"id": new_id, "course_name": course_name})
+
+
+@app.route("/saved", methods=["GET"])
+def saved_list():
+    return jsonify(db.list_syllabi())
+
+
+@app.route("/saved/<int:syllabus_id>", methods=["GET"])
+def saved_detail(syllabus_id):
+    record = db.get_syllabus(syllabus_id)
+    if not record:
+        return jsonify({"error": "Not found"}), 404
+
+    record["data"] = json.loads(record["data_json"])
+    del record["data_json"]
+    return jsonify(record)
+
+
+@app.route("/saved/<int:syllabus_id>", methods=["DELETE"])
+def saved_delete(syllabus_id):
+    db.delete_syllabus(syllabus_id)
+    return jsonify({"success": True})
 
 
 @app.route("/export-calendar", methods=["POST"])
@@ -83,8 +118,8 @@ def _build_ics(deadlines):
 
 
 def _parse_date_guess(date_text):
-    date_text = re.sub(r"\s*\(.*?\)", "", date_text)       # strip things like "(tentative)"
-    date_text = re.sub(r"\s+at\s+.*", "", date_text)        # strip "at 11:55pm"
+    date_text = re.sub(r"\s*\(.*?\)", "", date_text)
+    date_text = re.sub(r"\s+at\s+.*", "", date_text)
     date_text = date_text.strip().rstrip(".,")
 
     if not date_text or date_text.lower() in ("tbd", "n/a"):
@@ -92,7 +127,6 @@ def _parse_date_guess(date_text):
 
     current_year = datetime.now().year
 
-    # Try parsing as-is first (in case a year is already present)
     formats_with_year = ["%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y"]
     for fmt in formats_with_year:
         try:
@@ -101,7 +135,6 @@ def _parse_date_guess(date_text):
         except ValueError:
             continue
 
-    # If that failed, assume no year was present — append the current year and retry
     formats_no_year = ["%B %d", "%b %d"]
     for fmt in formats_no_year:
         try:
@@ -112,6 +145,7 @@ def _parse_date_guess(date_text):
             continue
 
     return None
+
 
 if __name__ == "__main__":
     app.run(debug=True)
