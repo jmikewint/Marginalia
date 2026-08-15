@@ -3,16 +3,33 @@
 <head>
     <title>Syllabus Translator</title>
     <style>
+        :root {
+            --bg: #f7f7f8;
+            --card-bg: #ffffff;
+            --text: #1a1a1a;
+            --text-muted: #666;
+            --border: #eee;
+            --input-border: #ddd;
+        }
+        [data-theme="dark"] {
+            --bg: #16161a;
+            --card-bg: #212126;
+            --text: #f0f0f0;
+            --text-muted: #aaa;
+            --border: #333;
+            --input-border: #444;
+        }
+
         * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             margin: 0;
-            background: #f7f7f8;
-            color: #1a1a1a;
+            background: var(--bg);
+            color: var(--text);
             display: flex;
+            transition: background 0.2s, color 0.2s;
         }
 
-        /* Auth screen */
         #auth-screen {
             width: 100%;
             min-height: 100vh;
@@ -21,7 +38,7 @@
             justify-content: center;
         }
         #auth-box {
-            background: white;
+            background: var(--card-bg);
             padding: 32px;
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -32,20 +49,21 @@
             width: 100%;
             padding: 10px;
             margin-bottom: 10px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--input-border);
             border-radius: 8px;
             font-size: 14px;
+            background: var(--bg);
+            color: var(--text);
         }
         #auth-error { color: #dc2626; font-size: 13px; margin-bottom: 10px; min-height: 16px; }
-        #auth-toggle { text-align: center; margin-top: 12px; font-size: 13px; color: #666; cursor: pointer; }
+        #auth-toggle { text-align: center; margin-top: 12px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
         #auth-toggle:hover { text-decoration: underline; }
 
-        /* Sidebar */
         #sidebar {
             width: 240px;
             min-height: 100vh;
-            background: white;
-            border-right: 1px solid #eee;
+            background: var(--card-bg);
+            border-right: 1px solid var(--border);
             padding: 20px;
             flex-shrink: 0;
         }
@@ -53,7 +71,7 @@
             font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #999;
+            color: var(--text-muted);
             margin-top: 0;
         }
         #user-bar {
@@ -61,16 +79,12 @@
             justify-content: space-between;
             align-items: center;
             font-size: 13px;
-            color: #666;
+            color: var(--text-muted);
             margin-bottom: 20px;
             padding-bottom: 16px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border);
         }
-        #logout-btn {
-            font-size: 12px;
-            padding: 4px 10px;
-            margin: 0;
-        }
+        #logout-btn { font-size: 12px; padding: 4px 10px; margin: 0; }
         .saved-item {
             padding: 10px 12px;
             border-radius: 8px;
@@ -81,28 +95,44 @@
             justify-content: space-between;
             align-items: center;
         }
-        .saved-item:hover { background: #f0f0f0; }
-        .saved-item .delete-x { color: #ccc; font-size: 12px; padding: 2px 6px; }
+        .saved-item:hover { background: var(--bg); }
+        .saved-item .delete-x { color: #999; font-size: 12px; padding: 2px 6px; }
         .saved-item .delete-x:hover { color: #dc2626; }
-        .empty-note { color: #bbb; font-size: 13px; }
+        .empty-note { color: var(--text-muted); font-size: 13px; }
 
-        /* Main content */
         #main {
             flex: 1;
             max-width: 800px;
             margin: 40px auto;
             padding: 0 20px;
         }
+        #main-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
         h1 { font-size: 28px; margin-bottom: 4px; }
-        .subtitle { color: #666; margin-bottom: 24px; }
+        .subtitle { color: var(--text-muted); margin-bottom: 24px; }
+
+        #theme-toggle {
+            background: none;
+            border: 1px solid var(--input-border);
+            color: var(--text);
+            padding: 6px 12px;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
         textarea {
             width: 100%;
             padding: 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--input-border);
             border-radius: 8px;
             font-family: inherit;
             font-size: 14px;
             resize: vertical;
+            background: var(--card-bg);
+            color: var(--text);
         }
         button {
             margin-top: 12px;
@@ -114,11 +144,12 @@
             font-size: 14px;
             cursor: pointer;
         }
-        button:hover { background: #333; }
-        button:disabled { background: #999; cursor: not-allowed; }
+        [data-theme="dark"] button { background: #eee; color: #1a1a1a; }
+        button:hover { opacity: 0.85; }
+        button:disabled { background: #999; cursor: not-allowed; opacity: 1; }
 
         .section {
-            background: white;
+            background: var(--card-bg);
             border-radius: 10px;
             padding: 20px;
             margin-top: 20px;
@@ -128,30 +159,57 @@
             font-size: 15px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #666;
+            color: var(--text-muted);
             margin-top: 0;
         }
         .grading-row, .deadline-row {
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--border);
         }
         .grading-row:last-child, .deadline-row:last-child { border-bottom: none; }
 
         .flag { padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; line-height: 1.5; }
-        .flag.high { background: #fef2f2; border-left: 4px solid #dc2626; }
-        .flag.medium { background: #fffbeb; border-left: 4px solid #d97706; }
+        .flag.high { background: #fef2f2; border-left: 4px solid #dc2626; color: #1a1a1a; }
+        .flag.medium { background: #fffbeb; border-left: 4px solid #d97706; color: #1a1a1a; }
         .flag-severity { font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px; }
         .flag.high .flag-severity { color: #dc2626; }
         .flag.medium .flag-severity { color: #d97706; }
 
         .hidden { display: none !important; }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        [data-theme="dark"] .spinner { border-color: rgba(0,0,0,0.3); border-top-color: #1a1a1a; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 700px) {
+            body { flex-direction: column; }
+            #sidebar {
+                width: 100%;
+                min-height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            #main { margin: 20px auto; padding: 0 16px; }
+            h1 { font-size: 22px; }
+            #main-header { flex-direction: column; }
+            #theme-toggle { margin-top: 12px; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- Auth screen: shown when logged out -->
     <div id="auth-screen">
         <div id="auth-box">
             <h2 id="auth-title">Log In</h2>
@@ -163,7 +221,6 @@
         </div>
     </div>
 
-    <!-- App: shown when logged in -->
     <div id="app-screen" class="hidden" style="display:flex; width:100%;">
         <div id="sidebar">
             <div id="user-bar">
@@ -176,16 +233,21 @@
         </div>
 
         <div id="main">
-            <h1>Syllabus Translator</h1>
-            <p class="subtitle">Paste your syllabus below and get the important stuff, plainly.</p>
+            <div id="main-header">
+                <div>
+                    <h1>Syllabus Translator</h1>
+                    <p class="subtitle">Paste your syllabus below and get the important stuff, plainly.</p>
+                </div>
+                <button id="theme-toggle">🌙 Dark mode</button>
+            </div>
 
             <div style="margin-bottom: 16px;">
-                <label style="display:block; margin-bottom: 6px; font-size: 14px; color: #666;">
+                <label style="display:block; margin-bottom: 6px; font-size: 14px; color: var(--text-muted);">
                     Upload a PDF or Word file:
                 </label>
                 <input type="file" id="syllabus-file" accept=".pdf,.docx">
             </div>
-            <p style="text-align:center; color:#999; margin: 12px 0;">— or paste text below —</p>
+            <p style="text-align:center; color: var(--text-muted); margin: 12px 0;">— or paste text below —</p>
 
             <textarea id="syllabus-input" rows="12" placeholder="Paste your syllabus text here..."></textarea>
             <br>

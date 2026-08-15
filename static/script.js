@@ -1,6 +1,28 @@
 let currentData = null;
 let isSignupMode = false;
 
+// ---- Dark mode ----
+
+function initTheme() {
+    const saved = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", saved);
+    updateThemeButton(saved);
+}
+
+function updateThemeButton(theme) {
+    document.getElementById("theme-toggle").textContent = theme === "dark" ? "☀️ Light mode" : "🌙 Dark mode";
+}
+
+document.getElementById("theme-toggle").addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") || "light";
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("theme", next);
+    updateThemeButton(next);
+});
+
+initTheme();
+
 // ---- Auth ----
 
 async function checkAuth() {
@@ -185,7 +207,7 @@ async function renderDashboard() {
     let html = `<div class="section"><h2>All deadlines across ${data.course_count} saved ${data.course_count === 1 ? "syllabus" : "syllabi"}</h2>`;
     data.deadlines.forEach(d => {
         html += `<div class="deadline-row">
-            <span><strong style="color:#666; font-size:12px;">${d.course}</strong><br>${d.item}</span>
+            <span><strong style="color: var(--text-muted); font-size:12px;">${d.course}</strong><br>${d.item}</span>
             <strong>${d.date}</strong>
         </div>`;
     });
@@ -207,7 +229,7 @@ document.getElementById("analyze-btn").addEventListener("click", async () => {
     if (!hasFile && !text.trim()) return;
 
     btn.disabled = true;
-    btn.textContent = "Analyzing...";
+    btn.innerHTML = `<span class="spinner"></span>Analyzing...`;
     resultsDiv.innerHTML = "";
 
     try {
