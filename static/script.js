@@ -1,4 +1,74 @@
 let currentData = null;
+let isSignupMode = false;
+
+// ---- Auth ----
+
+async function checkAuth() {
+    const res = await fetch("/me");
+    const data = await res.json();
+
+    if (data.username) {
+        showApp(data.username);
+    } else {
+        showAuthScreen();
+    }
+}
+
+function showAuthScreen() {
+    document.getElementById("auth-screen").classList.remove("hidden");
+    document.getElementById("app-screen").classList.add("hidden");
+}
+
+function showApp(username) {
+    document.getElementById("auth-screen").classList.add("hidden");
+    document.getElementById("app-screen").classList.remove("hidden");
+    document.getElementById("username-display").textContent = username;
+    loadSavedList();
+}
+
+document.getElementById("auth-toggle").addEventListener("click", () => {
+    isSignupMode = !isSignupMode;
+    document.getElementById("auth-title").textContent = isSignupMode ? "Sign Up" : "Log In";
+    document.getElementById("auth-submit-btn").textContent = isSignupMode ? "Sign Up" : "Log In";
+    document.getElementById("auth-toggle").textContent = isSignupMode
+        ? "Already have an account? Log in"
+        : "Don't have an account? Sign up";
+    document.getElementById("auth-error").textContent = "";
+});
+
+document.getElementById("auth-submit-btn").addEventListener("click", async () => {
+    const username = document.getElementById("auth-username").value.trim();
+    const password = document.getElementById("auth-password").value;
+    const errorDiv = document.getElementById("auth-error");
+    errorDiv.textContent = "";
+
+    if (!username || !password) {
+        errorDiv.textContent = "Please fill in both fields.";
+        return;
+    }
+
+    const endpoint = isSignupMode ? "/signup" : "/login";
+    const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+        errorDiv.textContent = data.error;
+        return;
+    }
+
+    showApp(data.username);
+});
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+    await fetch("/logout", { method: "POST" });
+    showAuthScreen();
+});
+
+// ---- Saved syllabi sidebar ----
 
 async function loadSavedList() {
     const res = await fetch("/saved");
@@ -37,6 +107,8 @@ async function loadSavedList() {
     });
 }
 
+// ---- Results rendering ----
+
 function renderResults(data) {
     const resultsDiv = document.getElementById("results");
     let html = "";
@@ -44,10 +116,7 @@ function renderResults(data) {
     if (data.flags && data.flags.length > 0) {
         html += `<div class="section"><h2>Watch out for</h2>`;
         data.flags.forEach(f => {
-            html += `<div class="flag ${f.severity}">
-                <div class="flag-severity">${f.severity}</div>
-                ${f.text}
-            </div>`;
+            html += `<div class="flag ${f.severity}"><div class="flag-severity">${f.severity}</div>${f.text}</div>`;
         });
         html += `</div>`;
     }
@@ -69,10 +138,7 @@ function renderResults(data) {
         html += `</div>`;
     }
 
-    html += `<div style="margin-top:20px;">
-        <button id="save-btn">Save this syllabus</button>
-    </div>`;
-
+    html += `<div style="margin-top:20px;"><button id="save-btn">Save this syllabus</button></div>`;
     resultsDiv.innerHTML = html;
 
     if (data.deadlines && data.deadlines.length > 0) {
@@ -106,6 +172,31 @@ function renderResults(data) {
     });
 }
 
+async function renderDashboard() {
+    const res = await fetch("/dashboard");
+    const data = await res.json();
+    const resultsDiv = document.getElementById("results");
+
+    if (data.deadlines.length === 0) {
+        resultsDiv.innerHTML = `<div class="section">No saved syllabi yet — analyze and save one first.</div>`;
+        return;
+    }
+
+    let html = `<div class="section"><h2>All deadlines across ${data.course_count} saved ${data.course_count === 1 ? "syllabus" : "syllabi"}</h2>`;
+    data.deadlines.forEach(d => {
+        html += `<div class="deadline-row">
+            <span><strong style="color:#666; font-size:12px;">${d.course}</strong><br>${d.item}</span>
+            <strong>${d.date}</strong>
+        </div>`;
+    });
+    html += `</div>`;
+    resultsDiv.innerHTML = html;
+}
+
+document.getElementById("dashboard-btn").addEventListener("click", renderDashboard);
+
+// ---- Analyze ----
+
 document.getElementById("analyze-btn").addEventListener("click", async () => {
     const fileInput = document.getElementById("syllabus-file");
     const text = document.getElementById("syllabus-input").value;
@@ -121,7 +212,6 @@ document.getElementById("analyze-btn").addEventListener("click", async () => {
 
     try {
         let response;
-
         if (hasFile) {
             const formData = new FormData();
             formData.append("syllabus_file", fileInput.files[0]);
@@ -135,7 +225,6 @@ document.getElementById("analyze-btn").addEventListener("click", async () => {
         }
 
         const data = await response.json();
-
         if (data.error) {
             resultsDiv.innerHTML = `<div class="section">Error: ${data.error}</div>`;
             return;
@@ -143,32 +232,6 @@ document.getElementById("analyze-btn").addEventListener("click", async () => {
 
         currentData = data;
         renderResults(data);
-
-        async function renderDashboard() {
-    const res = await fetch("/dashboard");
-    const data = await res.json();
-    const resultsDiv = document.getElementById("results");
-
-    if (data.deadlines.length === 0) {
-        resultsDiv.innerHTML = `<div class="section">No saved syllabi yet — analyze and save one first.</div>`;
-        return;
-    }
-
-    let html = `<div class="section">
-        <h2>All deadlines across ${data.course_count} saved ${data.course_count === 1 ? "syllabus" : "syllabi"}</h2>`;
-
-    data.deadlines.forEach(d => {
-        html += `<div class="deadline-row">
-            <span><strong style="color:#666; font-size:12px;">${d.course}</strong><br>${d.item}</span>
-            <strong>${d.date}</strong>
-        </div>`;
-    });
-
-    html += `</div>`;
-    resultsDiv.innerHTML = html;
-}
-
-document.getElementById("dashboard-btn").addEventListener("click", renderDashboard);
 
     } catch (err) {
         resultsDiv.innerHTML = `<div class="section">Something went wrong: ${err.message}</div>`;
@@ -178,4 +241,5 @@ document.getElementById("dashboard-btn").addEventListener("click", renderDashboa
     }
 });
 
-loadSavedList();
+// ---- Init ----
+checkAuth();

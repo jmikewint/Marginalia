@@ -12,6 +12,34 @@
             display: flex;
         }
 
+        /* Auth screen */
+        #auth-screen {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #auth-box {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            width: 320px;
+        }
+        #auth-box h2 { margin-top: 0; }
+        #auth-box input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        #auth-error { color: #dc2626; font-size: 13px; margin-bottom: 10px; min-height: 16px; }
+        #auth-toggle { text-align: center; margin-top: 12px; font-size: 13px; color: #666; cursor: pointer; }
+        #auth-toggle:hover { text-decoration: underline; }
+
         /* Sidebar */
         #sidebar {
             width: 240px;
@@ -28,6 +56,21 @@
             color: #999;
             margin-top: 0;
         }
+        #user-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+        #logout-btn {
+            font-size: 12px;
+            padding: 4px 10px;
+            margin: 0;
+        }
         .saved-item {
             padding: 10px 12px;
             border-radius: 8px;
@@ -39,11 +82,7 @@
             align-items: center;
         }
         .saved-item:hover { background: #f0f0f0; }
-        .saved-item .delete-x {
-            color: #ccc;
-            font-size: 12px;
-            padding: 2px 6px;
-        }
+        .saved-item .delete-x { color: #ccc; font-size: 12px; padding: 2px 6px; }
         .saved-item .delete-x:hover { color: #dc2626; }
         .empty-note { color: #bbb; font-size: 13px; }
 
@@ -77,8 +116,6 @@
         }
         button:hover { background: #333; }
         button:disabled { background: #999; cursor: not-allowed; }
-        button.secondary { background: white; color: #1a1a1a; border: 1px solid #ddd; margin-left: 8px; }
-        button.secondary:hover { background: #f0f0f0; }
 
         .section {
             background: white;
@@ -102,49 +139,59 @@
         }
         .grading-row:last-child, .deadline-row:last-child { border-bottom: none; }
 
-        .flag {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            font-size: 14px;
-            line-height: 1.5;
-        }
+        .flag { padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; line-height: 1.5; }
         .flag.high { background: #fef2f2; border-left: 4px solid #dc2626; }
         .flag.medium { background: #fffbeb; border-left: 4px solid #d97706; }
-        .flag-severity {
-            font-size: 11px;
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
+        .flag-severity { font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px; }
         .flag.high .flag-severity { color: #dc2626; }
         .flag.medium .flag-severity { color: #d97706; }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div id="sidebar">
-        <h3>Saved Syllabi</h3>
-        <div id="saved-list"><span class="empty-note">None yet</span></div>
-        <button id="dashboard-btn" style="width:100%; margin-top:16px;">📅 Dashboard</button>
+
+    <!-- Auth screen: shown when logged out -->
+    <div id="auth-screen">
+        <div id="auth-box">
+            <h2 id="auth-title">Log In</h2>
+            <div id="auth-error"></div>
+            <input type="text" id="auth-username" placeholder="Username">
+            <input type="password" id="auth-password" placeholder="Password">
+            <button id="auth-submit-btn" style="width:100%;">Log In</button>
+            <div id="auth-toggle">Don't have an account? Sign up</div>
+        </div>
     </div>
 
-    <div id="main">
-        <h1>Syllabus Translator</h1>
-        <p class="subtitle">Paste your syllabus below and get the important stuff, plainly.</p>
-
-        <div style="margin-bottom: 16px;">
-            <label style="display:block; margin-bottom: 6px; font-size: 14px; color: #666;">
-                Upload a PDF or Word file:
-            </label>
-            <input type="file" id="syllabus-file" accept=".pdf,.docx">
+    <!-- App: shown when logged in -->
+    <div id="app-screen" class="hidden" style="display:flex; width:100%;">
+        <div id="sidebar">
+            <div id="user-bar">
+                <span id="username-display"></span>
+                <button id="logout-btn">Log out</button>
+            </div>
+            <h3>Saved Syllabi</h3>
+            <div id="saved-list"><span class="empty-note">None yet</span></div>
+            <button id="dashboard-btn" style="width:100%; margin-top:16px;">📅 Dashboard</button>
         </div>
-        <p style="text-align:center; color:#999; margin: 12px 0;">— or paste text below —</p>
 
-        <textarea id="syllabus-input" rows="12" placeholder="Paste your syllabus text here..."></textarea>
-        <br>
-        <button id="analyze-btn">Analyze</button>
-        <div id="results"></div>
+        <div id="main">
+            <h1>Syllabus Translator</h1>
+            <p class="subtitle">Paste your syllabus below and get the important stuff, plainly.</p>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display:block; margin-bottom: 6px; font-size: 14px; color: #666;">
+                    Upload a PDF or Word file:
+                </label>
+                <input type="file" id="syllabus-file" accept=".pdf,.docx">
+            </div>
+            <p style="text-align:center; color:#999; margin: 12px 0;">— or paste text below —</p>
+
+            <textarea id="syllabus-input" rows="12" placeholder="Paste your syllabus text here..."></textarea>
+            <br>
+            <button id="analyze-btn">Analyze</button>
+            <div id="results"></div>
+        </div>
     </div>
 
     <script src="/static/script.js"></script>
