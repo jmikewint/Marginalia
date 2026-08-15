@@ -1,20 +1,33 @@
 document.getElementById("analyze-btn").addEventListener("click", async () => {
+    const fileInput = document.getElementById("syllabus-file");
     const text = document.getElementById("syllabus-input").value;
     const resultsDiv = document.getElementById("results");
     const btn = document.getElementById("analyze-btn");
 
-    if (!text.trim()) return;
+    const hasFile = fileInput.files.length > 0;
+    if (!hasFile && !text.trim()) return;
 
     btn.disabled = true;
     btn.textContent = "Analyzing...";
     resultsDiv.innerHTML = "";
 
     try {
-        const response = await fetch("/analyze", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ syllabus_text: text })
-        });
+        let response;
+
+        if (hasFile) {
+            const formData = new FormData();
+            formData.append("syllabus_file", fileInput.files[0]);
+            response = await fetch("/analyze", {
+                method: "POST",
+                body: formData
+            });
+        } else {
+            response = await fetch("/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ syllabus_text: text })
+            });
+        }
 
         const data = await response.json();
 
