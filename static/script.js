@@ -231,9 +231,11 @@ function renderResults(data) {
 // ---- Save modal ----
 
 let pendingSaveData = null;
+let saveModalOpener = null;
 
 function openSaveModal(data) {
     pendingSaveData = data;
+    saveModalOpener = document.activeElement;
     const input = document.getElementById("save-course-name");
     document.getElementById("save-name-error").textContent = "";
     input.value = (data && data.course_name) || "";
@@ -245,6 +247,29 @@ function openSaveModal(data) {
 function closeSaveModal() {
     document.getElementById("save-modal-overlay").classList.add("hidden");
     pendingSaveData = null;
+    if (saveModalOpener) {
+        saveModalOpener.focus();
+        saveModalOpener = null;
+    }
+}
+
+function trapSaveModalTab(e) {
+    if (e.key !== "Tab") return;
+    const focusable = [
+        document.getElementById("save-course-name"),
+        document.getElementById("save-modal-cancel"),
+        document.getElementById("save-modal-confirm")
+    ];
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+    }
 }
 
 async function confirmSave() {
@@ -277,6 +302,7 @@ document.getElementById("save-modal-overlay").addEventListener("click", (e) => {
 document.getElementById("save-course-name").addEventListener("keydown", (e) => {
     if (e.key === "Enter") confirmSave();
 });
+document.getElementById("save-modal").addEventListener("keydown", trapSaveModalTab);
 document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !document.getElementById("save-modal-overlay").classList.contains("hidden")) {
         closeSaveModal();
@@ -328,8 +354,8 @@ function renderError(message) {
         <div class="section error">
             <div class="error-row">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                    <circle cx="9" cy="9" r="7.25" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="M9 5.5V9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <circle cx="9" cy="9" r="7.2" stroke="currentColor" stroke-width="1.6"/>
+                    <path d="M9 5.5V9.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
                     <circle cx="9" cy="12.2" r="0.9" fill="currentColor"/>
                 </svg>
                 <span>${message}</span>

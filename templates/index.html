@@ -225,8 +225,13 @@
         .error-row svg { flex-shrink: 0; margin-top: 2px; }
         #retry-btn {
             margin-top: 14px;
-            margin-left: 26px;
+            margin-left: 28px;
         }
+        .section.error #retry-btn {
+            border-color: var(--error-border);
+            color: var(--error-text);
+        }
+        .section.error #retry-btn:hover { background: var(--card-bg); }
 
         button.btn-secondary {
             background: transparent;
