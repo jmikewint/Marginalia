@@ -105,7 +105,7 @@ async function loadSavedList() {
     listDiv.innerHTML = items.map(item => `
         <div class="saved-item" data-id="${item.id}">
             <span class="saved-name">${item.course_name}</span>
-            <span class="delete-x" data-id="${item.id}">✕</span>
+            <button type="button" class="delete-x" data-id="${item.id}" aria-label="Delete ${item.course_name}">✕</button>
         </div>
     `).join("");
 
@@ -120,13 +120,56 @@ async function loadSavedList() {
     });
 
     document.querySelectorAll(".delete-x").forEach(el => {
-        el.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            const id = e.target.dataset.id;
-            await fetch(`/saved/${id}`, { method: "DELETE" });
-            loadSavedList();
+        el.addEventListener("click", (e) => {
+            const id = e.currentTarget.dataset.id;
+            const itemEl = e.currentTarget.closest(".saved-item");
+            const courseName = itemEl.querySelector(".saved-name").textContent;
+            scheduleDelete(id, courseName, itemEl);
         });
     });
+
+    // Keep items whose deletion is still pending an undo hidden after a re-render
+    pendingDeletes.forEach((_, id) => {
+        const el = listDiv.querySelector(`.saved-item[data-id="${id}"]`);
+        if (el) el.style.display = "none";
+    });
+}
+
+// ---- Delete with undo ----
+
+const pendingDeletes = new Map();
+
+function scheduleDelete(id, courseName, itemEl) {
+    if (pendingDeletes.has(id)) return;
+
+    itemEl.style.display = "none";
+    const timer = setTimeout(() => finalizeDelete(id), 5000);
+    pendingDeletes.set(id, { timer });
+
+    showToast(`Removed "${courseName}"`, {
+        variant: "neutral",
+        actionLabel: "Undo",
+        onAction: () => undoDelete(id),
+        duration: 5000
+    });
+}
+
+async function finalizeDelete(id) {
+    if (!pendingDeletes.has(id)) return;
+    pendingDeletes.delete(id);
+    try {
+        await fetch(`/saved/${id}`, { method: "DELETE" });
+    } finally {
+        loadSavedList();
+    }
+}
+
+function undoDelete(id) {
+    const pending = pendingDeletes.get(id);
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    pendingDeletes.delete(id);
+    loadSavedList();
 }
 
 // ---- Results rendering ----
@@ -244,15 +287,37 @@ document.addEventListener("keydown", (e) => {
 
 let toastTimer = null;
 
-function showToast(message) {
+const TOAST_ICONS = {
+    success: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`,
+    neutral: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M4 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4.5 7C5.5 4.7 7.6 3 10 3c3.3 0 6 2.7 6 6s-2.7 6-6 6c-2.6 0-4.8-1.6-5.6-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`
+};
+
+function showToast(message, opts = {}) {
+    const { variant = "success", actionLabel, onAction, duration = 2500 } = opts;
     const toast = document.getElementById("toast");
-    document.getElementById("toast-message").textContent = message;
-    toast.classList.add("toast-visible");
+
+    toast.className = `toast-visible toast-${variant}`;
+    toast.innerHTML = `${TOAST_ICONS[variant]}<span>${message}</span>` +
+        (actionLabel ? `<button type="button" id="toast-action-btn">${actionLabel}</button>` : "");
+
+    if (actionLabel && onAction) {
+        document.getElementById("toast-action-btn").addEventListener("click", () => {
+            onAction();
+            hideToast();
+        });
+    }
 
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-        toast.classList.remove("toast-visible");
-    }, 2500);
+    toastTimer = setTimeout(hideToast, duration);
+}
+
+function hideToast() {
+    document.getElementById("toast").classList.remove("toast-visible");
 }
 
 // ---- Error state ----

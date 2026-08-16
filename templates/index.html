@@ -98,18 +98,38 @@
         }
         #logout-btn { font-size: 12px; padding: 4px 10px; margin: 0; }
         .saved-item {
-            padding: 10px 12px;
+            padding: 6px 6px 6px 12px;
             border-radius: 8px;
             margin-bottom: 6px;
-            cursor: pointer;
             font-size: 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 8px;
         }
         .saved-item:hover { background: var(--bg); }
-        .saved-item .delete-x { color: #999; font-size: 12px; padding: 2px 6px; }
-        .saved-item .delete-x:hover { color: #dc2626; }
+        .saved-item .saved-name {
+            cursor: pointer;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 4px 0;
+        }
+        .saved-item .delete-x {
+            background: none;
+            border: none;
+            margin: 0;
+            padding: 8px 10px;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .saved-item .delete-x:hover { background: var(--error-bg); color: var(--error-text); opacity: 1; }
         .empty-note { color: var(--text-muted); font-size: 13px; }
 
         #main {
@@ -271,22 +291,37 @@
             bottom: 24px;
             left: 50%;
             background: var(--card-bg);
-            border: 1px solid var(--success-border);
-            color: var(--success-text);
-            padding: 10px 18px;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px 10px 18px;
             border-radius: 8px;
             box-shadow: 0 4px 16px rgba(0,0,0,0.2);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             font-size: 14px;
+            max-width: calc(100vw - 32px);
             z-index: 200;
             opacity: 0;
             transform: translateX(-50%) translateY(8px);
             transition: opacity 0.2s, transform 0.2s;
             pointer-events: none;
         }
-        #toast.toast-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #toast.toast-visible { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+        #toast.toast-success { border-color: var(--success-border); color: var(--success-text); }
+        #toast span { flex: 1; min-width: 0; }
+        #toast-action-btn {
+            background: none;
+            border: none;
+            margin: 0;
+            padding: 4px 6px;
+            color: inherit;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: underline;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
 
         .hidden { display: none !important; }
 
@@ -382,12 +417,7 @@
         </div>
     </div>
 
-    <div id="toast" role="status" aria-live="polite">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M3 8.5L6.2 11.5L13 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span id="toast-message"></span>
-    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
 
     <script src="/static/script.js"></script>
 </body>
