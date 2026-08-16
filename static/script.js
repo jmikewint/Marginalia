@@ -90,6 +90,23 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
     showAuthScreen();
 });
 
+// ---- Password visibility toggle ----
+
+const EYE_ICON = `<path d="M1.5 9S4.5 3.5 9 3.5 16.5 9 16.5 9 13.5 14.5 9 14.5 1.5 9 1.5 9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="9" cy="9" r="2.25" stroke="currentColor" stroke-width="1.5"/>`;
+const EYE_OFF_ICON = EYE_ICON + `<path d="M2.5 2.5l13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`;
+
+document.getElementById("password-toggle").addEventListener("click", () => {
+    const input = document.getElementById("auth-password");
+    const btn = document.getElementById("password-toggle");
+    const icon = document.getElementById("password-toggle-icon");
+    const showing = input.type === "text";
+
+    input.type = showing ? "password" : "text";
+    btn.setAttribute("aria-pressed", String(!showing));
+    btn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+    icon.innerHTML = showing ? EYE_ICON : EYE_OFF_ICON;
+});
+
 // ---- Saved syllabi sidebar ----
 
 async function loadSavedList() {
@@ -105,7 +122,14 @@ async function loadSavedList() {
     listDiv.innerHTML = items.map(item => `
         <div class="saved-item" data-id="${item.id}">
             <span class="saved-name">${item.course_name}</span>
-            <button type="button" class="delete-x" data-id="${item.id}" aria-label="Delete ${item.course_name}">✕</button>
+            <div class="saved-item-actions">
+                <button type="button" class="rename-btn" data-id="${item.id}" aria-label="Rename ${item.course_name}">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                        <path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button type="button" class="delete-x" data-id="${item.id}" aria-label="Delete ${item.course_name}">✕</button>
+            </div>
         </div>
     `).join("");
 
@@ -128,11 +152,77 @@ async function loadSavedList() {
         });
     });
 
+    document.querySelectorAll(".rename-btn").forEach(el => {
+        el.addEventListener("click", (e) => {
+            const id = e.currentTarget.dataset.id;
+            const itemEl = e.currentTarget.closest(".saved-item");
+            const currentName = itemEl.querySelector(".saved-name").textContent;
+            enterRenameMode(itemEl, id, currentName);
+        });
+    });
+
     // Keep items whose deletion is still pending an undo hidden after a re-render
     pendingDeletes.forEach((_, id) => {
         const el = listDiv.querySelector(`.saved-item[data-id="${id}"]`);
         if (el) el.style.display = "none";
     });
+}
+
+// ---- Rename ----
+
+function enterRenameMode(itemEl, id, currentName) {
+    itemEl.classList.add("saved-item-editing");
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "saved-name-input";
+    input.value = currentName;
+    input.setAttribute("aria-label", "Course name");
+
+    itemEl.querySelector(".saved-name").replaceWith(input);
+
+    const actions = itemEl.querySelector(".saved-item-actions");
+    actions.innerHTML = `
+        <button type="button" class="rename-confirm" aria-label="Save name">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <button type="button" class="rename-cancel" aria-label="Cancel rename">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+        </button>
+    `;
+
+    const commit = () => confirmRename(id, input.value);
+    const cancel = () => loadSavedList();
+
+    actions.querySelector(".rename-confirm").addEventListener("click", commit);
+    actions.querySelector(".rename-cancel").addEventListener("click", cancel);
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") commit();
+        if (e.key === "Escape") cancel();
+    });
+
+    input.focus();
+    input.select();
+}
+
+async function confirmRename(id, newName) {
+    const trimmed = newName.trim();
+    if (!trimmed) {
+        loadSavedList();
+        return;
+    }
+
+    await fetch(`/saved/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course_name: trimmed })
+    });
+
+    loadSavedList();
 }
 
 // ---- Delete with undo ----
@@ -441,16 +531,34 @@ function updateDropzoneUI() {
 const dropzone = document.getElementById("dropzone");
 document.getElementById("syllabus-file").addEventListener("change", updateDropzoneUI);
 
+// Fallback: if a drop lands outside the dropzone itself, stop the browser
+// from navigating to / opening the dropped file.
+["dragover", "drop"].forEach(evt => {
+    document.addEventListener(evt, (e) => e.preventDefault());
+});
+
 ["dragenter", "dragover"].forEach(evt => {
     dropzone.addEventListener(evt, (e) => {
         e.preventDefault();
         dropzone.classList.add("dropzone-active");
     });
 });
-["dragleave", "drop"].forEach(evt => {
-    dropzone.addEventListener(evt, () => {
-        dropzone.classList.remove("dropzone-active");
-    });
+dropzone.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dropzone-active");
+});
+dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dropzone-active");
+
+    const dropped = e.dataTransfer.files[0];
+    if (!dropped) return;
+
+    const fileInput = document.getElementById("syllabus-file");
+    const dt = new DataTransfer();
+    dt.items.add(dropped);
+    fileInput.files = dt.files;
+    updateDropzoneUI();
 });
 
 document.getElementById("dropzone-remove").addEventListener("click", (e) => {

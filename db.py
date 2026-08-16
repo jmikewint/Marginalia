@@ -102,3 +102,13 @@ def delete_syllabus(user_id, syllabus_id):
     conn.execute("DELETE FROM syllabi WHERE id = ? AND user_id = ?", (syllabus_id, user_id))
     conn.commit()
     conn.close()
+
+
+def rename_syllabus(user_id, syllabus_id, course_name):
+    conn = get_connection()
+    conn.execute(
+        "UPDATE syllabi SET course_name = ? WHERE id = ? AND user_id = ?",
+        (course_name, syllabus_id, user_id)
+    )
+    conn.commit()
+    conn.close()

@@ -196,6 +196,24 @@ button, input, textarea { font-family: inherit; }
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-soft);
 }
+.password-field { position: relative; margin-bottom: 10px; }
+#auth-box .password-field input { padding-right: 40px; margin-bottom: 0; }
+#password-toggle {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    margin: 0;
+    padding: 6px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    transition: background-color 0.15s, color 0.15s;
+}
+#password-toggle:hover { background: var(--bg); color: var(--text); }
 #auth-error { color: var(--error-text); font-size: 13px; margin-bottom: 10px; min-height: 16px; }
 #auth-toggle {
     text-align: left;
@@ -249,6 +267,7 @@ button, input, textarea { font-family: inherit; }
     transition: background-color 0.15s;
 }
 .saved-item:hover { background: var(--bg); }
+.saved-item.saved-item-editing { background: var(--bg); }
 .saved-item .saved-name {
     cursor: pointer;
     flex: 1;
@@ -258,7 +277,16 @@ button, input, textarea { font-family: inherit; }
     white-space: nowrap;
     padding: 5px 0;
 }
-.saved-item .delete-x {
+.saved-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+.saved-item .rename-btn,
+.saved-item .delete-x,
+.saved-item .rename-confirm,
+.saved-item .rename-cancel {
     background: none;
     border: none;
     margin: 0;
@@ -269,9 +297,34 @@ button, input, textarea { font-family: inherit; }
     line-height: 1;
     cursor: pointer;
     flex-shrink: 0;
+    display: inline-flex;
     transition: background-color 0.15s, color 0.15s;
 }
-.saved-item .delete-x:hover { background: var(--error-bg); color: var(--error-text); }
+.saved-item .rename-btn:hover,
+.saved-item .rename-confirm:hover {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+.saved-item .delete-x:hover,
+.saved-item .rename-cancel:hover {
+    background: var(--error-bg);
+    color: var(--error-text);
+}
+.saved-name-input {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    padding: 6px 8px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--text);
+    font-family: inherit;
+}
+.saved-name-input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
 .empty-note { color: var(--text-muted); font-size: 13px; }
 
 #main {

@@ -151,6 +151,19 @@ def saved_delete(syllabus_id):
     return jsonify({"success": True})
 
 
+@app.route("/saved/<int:syllabus_id>", methods=["PATCH"])
+@login_required
+def saved_rename(syllabus_id):
+    data = request.get_json(silent=True) or {}
+    course_name = data.get("course_name", "").strip()
+
+    if not course_name:
+        return jsonify({"error": "Course name is required"}), 400
+
+    db.rename_syllabus(session["user_id"], syllabus_id, course_name)
+    return jsonify({"id": syllabus_id, "course_name": course_name})
+
+
 @app.route("/dashboard", methods=["GET"])
 @login_required
 def dashboard_data():
