@@ -180,18 +180,105 @@ function renderResults(data) {
         });
     }
 
-    document.getElementById("save-btn").addEventListener("click", async () => {
-        const courseName = prompt("Name this syllabus (e.g. 'CS 2000'):");
-        if (!courseName) return;
-
-        await fetch("/save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ course_name: courseName, data: data })
-        });
-
-        loadSavedList();
+    document.getElementById("save-btn").addEventListener("click", () => {
+        openSaveModal(data);
     });
+}
+
+// ---- Save modal ----
+
+let pendingSaveData = null;
+
+function openSaveModal(data) {
+    pendingSaveData = data;
+    const input = document.getElementById("save-course-name");
+    document.getElementById("save-name-error").textContent = "";
+    input.value = (data && data.course_name) || "";
+    document.getElementById("save-modal-overlay").classList.remove("hidden");
+    input.focus();
+    input.select();
+}
+
+function closeSaveModal() {
+    document.getElementById("save-modal-overlay").classList.add("hidden");
+    pendingSaveData = null;
+}
+
+async function confirmSave() {
+    const input = document.getElementById("save-course-name");
+    const errorDiv = document.getElementById("save-name-error");
+    const courseName = input.value.trim();
+
+    if (!courseName) {
+        errorDiv.textContent = "Enter a course name to save this syllabus.";
+        input.focus();
+        return;
+    }
+
+    await fetch("/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course_name: courseName, data: pendingSaveData })
+    });
+
+    closeSaveModal();
+    loadSavedList();
+    showToast(`Saved "${courseName}"`);
+}
+
+document.getElementById("save-modal-confirm").addEventListener("click", confirmSave);
+document.getElementById("save-modal-cancel").addEventListener("click", closeSaveModal);
+document.getElementById("save-modal-overlay").addEventListener("click", (e) => {
+    if (e.target.id === "save-modal-overlay") closeSaveModal();
+});
+document.getElementById("save-course-name").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") confirmSave();
+});
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !document.getElementById("save-modal-overlay").classList.contains("hidden")) {
+        closeSaveModal();
+    }
+});
+
+// ---- Toast ----
+
+let toastTimer = null;
+
+function showToast(message) {
+    const toast = document.getElementById("toast");
+    document.getElementById("toast-message").textContent = message;
+    toast.classList.add("toast-visible");
+
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        toast.classList.remove("toast-visible");
+    }, 2500);
+}
+
+// ---- Error state ----
+
+function renderError(message) {
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = `
+        <div class="section error">
+            <div class="error-row">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                    <circle cx="9" cy="9" r="7.25" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M9 5.5V9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <circle cx="9" cy="12.2" r="0.9" fill="currentColor"/>
+                </svg>
+                <span>${message}</span>
+            </div>
+        </div>
+    `;
+    const section = resultsDiv.querySelector(".section.error");
+    const retryBtn = document.createElement("button");
+    retryBtn.id = "retry-btn";
+    retryBtn.className = "btn-secondary";
+    retryBtn.type = "button";
+    retryBtn.textContent = "Try again";
+    retryBtn.addEventListener("click", performAnalyze);
+    section.appendChild(retryBtn);
 }
 
 async function renderDashboard() {
@@ -219,7 +306,7 @@ document.getElementById("dashboard-btn").addEventListener("click", renderDashboa
 
 // ---- Analyze ----
 
-document.getElementById("analyze-btn").addEventListener("click", async () => {
+async function performAnalyze() {
     const fileInput = document.getElementById("syllabus-file");
     const text = document.getElementById("syllabus-input").value;
     const resultsDiv = document.getElementById("results");
@@ -248,7 +335,7 @@ document.getElementById("analyze-btn").addEventListener("click", async () => {
 
         const data = await response.json();
         if (data.error) {
-            resultsDiv.innerHTML = `<div class="section">Error: ${data.error}</div>`;
+            renderError(data.error);
             return;
         }
 
@@ -256,12 +343,14 @@ document.getElementById("analyze-btn").addEventListener("click", async () => {
         renderResults(data);
 
     } catch (err) {
-        resultsDiv.innerHTML = `<div class="section">Something went wrong: ${err.message}</div>`;
+        renderError(`Couldn't reach the server: ${err.message}`);
     } finally {
         btn.disabled = false;
         btn.textContent = "Analyze";
     }
-});
+}
+
+document.getElementById("analyze-btn").addEventListener("click", performAnalyze);
 
 // ---- Init ----
 checkAuth();

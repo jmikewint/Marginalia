@@ -9,6 +9,7 @@ def analyze_syllabus(syllabus_text):
     prompt = f"""You are analyzing a course syllabus. Extract the following information and return ONLY valid JSON, no other text, in this exact structure:
 
 {{
+  "course_name": "string, the course code and/or title as it appears in the syllabus header, e.g. 'CS 2000: Intro to Programming'. Empty string if none is identifiable.",
   "grading": [
     {{"component": "string, e.g. Midterm Exam", "weight": "string, e.g. 25%"}}
   ],
