@@ -10,7 +10,7 @@ function initTheme() {
 }
 
 function updateThemeButton(theme) {
-    document.getElementById("theme-toggle").textContent = theme === "dark" ? "☀️ Light mode" : "🌙 Dark mode";
+    document.getElementById("theme-toggle").textContent = theme === "dark" ? "Light mode" : "Dark mode";
 }
 
 document.getElementById("theme-toggle").addEventListener("click", () => {
@@ -181,7 +181,16 @@ function renderResults(data) {
     if (data.flags && data.flags.length > 0) {
         html += `<div class="section"><h2>Watch out for</h2>`;
         data.flags.forEach(f => {
-            html += `<div class="flag ${f.severity}"><div class="flag-severity">${f.severity}</div>${f.text}</div>`;
+            html += `<div class="flag ${f.severity}">
+                <svg class="flag-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M8 1.5 15 14H1L8 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                    <path d="M8 6.2v3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    <circle cx="8" cy="11.6" r="0.8" fill="currentColor"/>
+                </svg>
+                <div class="flag-body">
+                    <div class="flag-severity">${f.severity}</div>${f.text}
+                </div>
+            </div>`;
         });
         html += `</div>`;
     }
@@ -199,7 +208,7 @@ function renderResults(data) {
         data.deadlines.forEach(d => {
             html += `<div class="deadline-row"><span>${d.item}</span><strong>${d.date}</strong></div>`;
         });
-        html += `<button id="export-cal-btn">Export to Calendar</button>`;
+        html += `<button id="export-cal-btn" class="btn-secondary">Export to Calendar</button>`;
         html += `</div>`;
     }
 
@@ -378,7 +387,7 @@ async function renderDashboard() {
     const resultsDiv = document.getElementById("results");
 
     if (data.deadlines.length === 0) {
-        resultsDiv.innerHTML = `<div class="section">No saved syllabi yet — analyze and save one first.</div>`;
+        resultsDiv.innerHTML = `<div class="section">No saved syllabi yet. Analyze and save one first.</div>`;
         return;
     }
 
@@ -394,6 +403,61 @@ async function renderDashboard() {
 }
 
 document.getElementById("dashboard-btn").addEventListener("click", renderDashboard);
+
+// ---- Dropzone ----
+
+const DROPZONE_ALLOWED_EXT = [".pdf", ".docx"];
+
+function updateDropzoneUI() {
+    const fileInput = document.getElementById("syllabus-file");
+    const dropzoneEmpty = document.getElementById("dropzone-empty");
+    const dropzoneFile = document.getElementById("dropzone-file");
+    const dropzoneFilename = document.getElementById("dropzone-filename");
+    const dropzoneError = document.getElementById("dropzone-error");
+    const file = fileInput.files[0];
+
+    dropzoneError.textContent = "";
+
+    if (!file) {
+        dropzoneEmpty.classList.remove("hidden");
+        dropzoneFile.classList.add("hidden");
+        return;
+    }
+
+    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    if (!DROPZONE_ALLOWED_EXT.includes(ext)) {
+        fileInput.value = "";
+        dropzoneError.textContent = "Please choose a PDF or Word (.docx) file.";
+        dropzoneEmpty.classList.remove("hidden");
+        dropzoneFile.classList.add("hidden");
+        return;
+    }
+
+    dropzoneFilename.textContent = file.name;
+    dropzoneEmpty.classList.add("hidden");
+    dropzoneFile.classList.remove("hidden");
+}
+
+const dropzone = document.getElementById("dropzone");
+document.getElementById("syllabus-file").addEventListener("change", updateDropzoneUI);
+
+["dragenter", "dragover"].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.add("dropzone-active");
+    });
+});
+["dragleave", "drop"].forEach(evt => {
+    dropzone.addEventListener(evt, () => {
+        dropzone.classList.remove("dropzone-active");
+    });
+});
+
+document.getElementById("dropzone-remove").addEventListener("click", (e) => {
+    e.preventDefault();
+    document.getElementById("syllabus-file").value = "";
+    updateDropzoneUI();
+});
 
 // ---- Analyze ----
 
