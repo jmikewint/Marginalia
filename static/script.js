@@ -48,7 +48,7 @@ function showApp(username) {
     loadSavedList();
 }
 
-document.getElementById("auth-toggle").addEventListener("click", () => {
+function toggleAuthMode() {
     isSignupMode = !isSignupMode;
     document.getElementById("auth-title").textContent = isSignupMode ? "Sign Up" : "Log In";
     document.getElementById("auth-submit-btn").textContent = isSignupMode ? "Sign Up" : "Log In";
@@ -56,6 +56,14 @@ document.getElementById("auth-toggle").addEventListener("click", () => {
         ? "Already have an account? Log in"
         : "Don't have an account? Sign up";
     document.getElementById("auth-error").textContent = "";
+}
+
+document.getElementById("auth-toggle").addEventListener("click", toggleAuthMode);
+document.getElementById("auth-toggle").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggleAuthMode();
+    }
 });
 
 document.getElementById("auth-submit-btn").addEventListener("click", async () => {
@@ -121,25 +129,38 @@ async function loadSavedList() {
 
     listDiv.innerHTML = items.map(item => `
         <div class="saved-item" data-id="${item.id}">
-            <span class="saved-name">${item.course_name}</span>
+            <span class="saved-name" role="button" tabindex="0" aria-label="Open ${item.course_name}">${item.course_name}</span>
             <div class="saved-item-actions">
                 <button type="button" class="rename-btn" data-id="${item.id}" aria-label="Rename ${item.course_name}">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                         <path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
                     </svg>
                 </button>
-                <button type="button" class="delete-x" data-id="${item.id}" aria-label="Delete ${item.course_name}">✕</button>
+                <button type="button" class="delete-x" data-id="${item.id}" aria-label="Delete ${item.course_name}">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                        <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
             </div>
         </div>
     `).join("");
 
+    async function openSavedItem(id) {
+        const res = await fetch(`/saved/${id}`);
+        const record = await res.json();
+        currentData = record.data;
+        renderResults(currentData);
+    }
+
     document.querySelectorAll(".saved-name").forEach(el => {
-        el.addEventListener("click", async (e) => {
-            const id = e.target.closest(".saved-item").dataset.id;
-            const res = await fetch(`/saved/${id}`);
-            const record = await res.json();
-            currentData = record.data;
-            renderResults(currentData);
+        el.addEventListener("click", (e) => {
+            openSavedItem(e.currentTarget.closest(".saved-item").dataset.id);
+        });
+        el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openSavedItem(e.currentTarget.closest(".saved-item").dataset.id);
+            }
         });
     });
 
@@ -189,20 +210,31 @@ function enterRenameMode(itemEl, id, currentName) {
             </svg>
         </button>
         <button type="button" class="rename-cancel" aria-label="Cancel rename">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
             </svg>
         </button>
     `;
 
-    const commit = () => confirmRename(id, input.value);
-    const cancel = () => loadSavedList();
+    // A click on Confirm/Cancel blurs the input before its own click handler
+    // runs, and rebuilding the list on commit/cancel removes the (still
+    // focused) input, which fires blur again. `resolved` makes both of those
+    // no-ops once the rename has genuinely been settled, so a blur only ever
+    // triggers a cancel when the user actually clicked away.
+    let resolved = false;
+    const commit = () => { resolved = true; confirmRename(id, input.value); };
+    const cancel = () => { resolved = true; loadSavedList(); };
 
     actions.querySelector(".rename-confirm").addEventListener("click", commit);
     actions.querySelector(".rename-cancel").addEventListener("click", cancel);
     input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") commit();
         if (e.key === "Escape") cancel();
+    });
+    input.addEventListener("blur", () => {
+        setTimeout(() => {
+            if (!resolved) cancel();
+        }, 150);
     });
 
     input.focus();
@@ -431,10 +463,14 @@ function showToast(message, opts = {}) {
         (actionLabel ? `<button type="button" id="toast-action-btn">${actionLabel}</button>` : "");
 
     if (actionLabel && onAction) {
-        document.getElementById("toast-action-btn").addEventListener("click", () => {
+        const actionBtn = document.getElementById("toast-action-btn");
+        actionBtn.addEventListener("click", () => {
             onAction();
             hideToast();
         });
+        // Move focus to the action so keyboard/screen-reader users have a
+        // direct path to it before the toast (and the action it undoes) expires.
+        actionBtn.focus();
     }
 
     clearTimeout(toastTimer);

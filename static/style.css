@@ -2,13 +2,6 @@
 
 @font-face {
     font-family: 'Cabinet Grotesk';
-    src: url('/static/fonts/CabinetGrotesk-Medium.woff2') format('woff2');
-    font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-}
-@font-face {
-    font-family: 'Cabinet Grotesk';
     src: url('/static/fonts/CabinetGrotesk-Bold.woff2') format('woff2');
     font-weight: 700;
     font-style: normal;
@@ -43,6 +36,15 @@
     --success-bg: #f0fdf4;
     --success-border: #86efac;
     --success-text: #15803d;
+    --warning-bg: #fffbeb;
+    --warning-text: #b45309;
+
+    /* Fixed brand identity, deliberately the same in both themes (see colorize
+       pass: --accent inverts brightness between themes for button-fill use,
+       which broke this panel's contrast when it reused that token). */
+    --brand-panel-bg: #372f9e;
+    --brand-panel-text: rgba(255, 255, 255, 0.86);
+    --brand-panel-text-strong: #ffffff;
 
     --font-display: 'Cabinet Grotesk', ui-sans-serif, system-ui, sans-serif;
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -74,6 +76,8 @@
     --success-bg: #14251a;
     --success-border: #166534;
     --success-text: #86efac;
+    --warning-bg: #2e2408;
+    --warning-text: #f2b544;
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 24px rgba(0, 0, 0, 0.35);
     --shadow-modal: 0 24px 70px rgba(0, 0, 0, 0.55);
@@ -119,8 +123,8 @@ button, input, textarea { font-family: inherit; }
 }
 #auth-brand {
     flex: 1 1 42%;
-    background: var(--accent);
-    color: var(--accent-contrast);
+    background: var(--brand-panel-bg);
+    color: var(--brand-panel-text-strong);
     padding: 48px 40px;
     display: flex;
     flex-direction: column;
@@ -161,7 +165,7 @@ button, input, textarea { font-family: inherit; }
     margin: 0;
     font-size: 15px;
     line-height: 1.6;
-    color: rgba(255, 255, 255, 0.82);
+    color: var(--brand-panel-text);
     max-width: 30ch;
     position: relative;
 }
@@ -179,6 +183,12 @@ button, input, textarea { font-family: inherit; }
     font-weight: 700;
     font-size: 22px;
     margin: 0 0 20px;
+}
+.input-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
 }
 #auth-box input {
     width: 100%;
@@ -213,6 +223,15 @@ button, input, textarea { font-family: inherit; }
     display: inline-flex;
     transition: background-color 0.15s, color 0.15s;
 }
+#password-toggle::before {
+    /* Invisible touch-target expansion: the visible icon stays sized to fit
+       inside the input without overflowing it, while the actual tappable
+       area still meets the 44x44px minimum. Nothing else sits close enough
+       to this control for the expanded zone to collide with. */
+    content: "";
+    position: absolute;
+    inset: -7px;
+}
 #password-toggle:hover { background: var(--bg); color: var(--text); }
 #auth-error { color: var(--error-text); font-size: 13px; margin-bottom: 10px; min-height: 16px; }
 #auth-toggle {
@@ -228,6 +247,7 @@ button, input, textarea { font-family: inherit; }
 /* ---- App shell ---- */
 
 #sidebar {
+    order: -1;
     width: 250px;
     min-height: 100vh;
     background: var(--card-bg);
@@ -235,7 +255,7 @@ button, input, textarea { font-family: inherit; }
     padding: 24px 20px;
     flex-shrink: 0;
 }
-#sidebar h3 {
+#sidebar h2 {
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 12px;
@@ -280,7 +300,7 @@ button, input, textarea { font-family: inherit; }
 .saved-item-actions {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
     flex-shrink: 0;
 }
 .saved-item .rename-btn,
@@ -290,11 +310,9 @@ button, input, textarea { font-family: inherit; }
     background: none;
     border: none;
     margin: 0;
-    padding: 8px 10px;
+    padding: 15px;
     border-radius: 6px;
     color: var(--text-muted);
-    font-size: 13px;
-    line-height: 1;
     cursor: pointer;
     flex-shrink: 0;
     display: inline-flex;
@@ -445,6 +463,12 @@ h1 {
     display: inline-flex;
     transition: background-color 0.15s, color 0.15s;
 }
+.dropzone-remove::before {
+    /* Invisible touch-target expansion, same rationale as #password-toggle. */
+    content: "";
+    position: absolute;
+    inset: -9px;
+}
 .dropzone-remove:hover { background: var(--error-bg); color: var(--error-text); }
 .dropzone-error-msg {
     color: var(--error-text);
@@ -563,17 +587,14 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
 }
 .flag:last-child { margin-bottom: 0; }
 .flag.high { background: var(--error-bg); color: var(--text); }
-.flag.medium { background: #fffbeb; color: var(--text); }
-[data-theme="dark"] .flag.medium { background: #2e2408; }
+.flag.medium { background: var(--warning-bg); color: var(--text); }
 .flag-icon { flex-shrink: 0; margin-top: 1px; }
 .flag.high .flag-icon { color: var(--error-text); }
-.flag.medium .flag-icon { color: #b45309; }
-[data-theme="dark"] .flag.medium .flag-icon { color: #f2b544; }
+.flag.medium .flag-icon { color: var(--warning-text); }
 .flag-body { min-width: 0; }
 .flag-severity { font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 3px; }
 .flag.high .flag-severity { color: var(--error-text); }
-.flag.medium .flag-severity { color: #b45309; }
-[data-theme="dark"] .flag.medium .flag-severity { color: #f2b544; }
+.flag.medium .flag-severity { color: var(--warning-text); }
 
 /* ---- Error card ---- */
 
