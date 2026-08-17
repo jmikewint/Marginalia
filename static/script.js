@@ -715,11 +715,20 @@ document.getElementById("dashboard-btn").addEventListener("click", renderDashboa
 
 const DROPZONE_ALLOWED_EXT = [".pdf", ".docx"];
 
+function formatFileSize(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(kb < 10 ? 1 : 0)} KB`;
+    const mb = kb / 1024;
+    return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`;
+}
+
 function updateDropzoneUI() {
     const fileInput = document.getElementById("syllabus-file");
     const dropzoneEmpty = document.getElementById("dropzone-empty");
     const dropzoneFile = document.getElementById("dropzone-file");
     const dropzoneFilename = document.getElementById("dropzone-filename");
+    const dropzoneFilesize = document.getElementById("dropzone-filesize");
     const dropzoneError = document.getElementById("dropzone-error");
     const file = fileInput.files[0];
 
@@ -737,6 +746,7 @@ function updateDropzoneUI() {
             dropzoneFile.classList.add("hidden");
         } else {
             dropzoneFilename.textContent = file.name;
+            dropzoneFilesize.textContent = formatFileSize(file.size);
             dropzoneEmpty.classList.add("hidden");
             dropzoneFile.classList.remove("hidden");
         }
@@ -815,7 +825,14 @@ document.getElementById("syllabus-input").addEventListener("input", updateInputA
 
 // ---- Analyze ----
 
+function setAnalyzeStage(label) {
+    document.getElementById("analyze-btn").innerHTML = `<span class="spinner"></span>${label}`;
+}
+
 async function performAnalyze() {
+    // Re-read the current file/text on every call rather than caching it, so
+    // clicking "Try again" after a failure re-uses whatever is still
+    // selected or pasted instead of needing it re-attached.
     const fileInput = document.getElementById("syllabus-file");
     const text = document.getElementById("syllabus-input").value;
     const resultsDiv = document.getElementById("results");
@@ -825,22 +842,34 @@ async function performAnalyze() {
     if (!hasFile && !text.trim()) return;
 
     btn.disabled = true;
-    btn.innerHTML = `<span class="spinner"></span>Analyzing...`;
+    setAnalyzeStage(hasFile ? "Reading file..." : "Analyzing with Claude...");
     resultsDiv.innerHTML = "";
 
     try {
-        let response;
+        let syllabusText = text;
+
+        // Extracting the file's text is its own request specifically so this
+        // status update reflects a real, observed stage boundary (the
+        // request completing) rather than a guessed delay before switching
+        // to the next label.
         if (hasFile) {
             const formData = new FormData();
             formData.append("syllabus_file", fileInput.files[0]);
-            response = await fetch("/analyze", { method: "POST", body: formData });
-        } else {
-            response = await fetch("/analyze", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ syllabus_text: text })
-            });
+            const extractResponse = await fetch("/extract-text", { method: "POST", body: formData });
+            const extractData = await extractResponse.json();
+            if (extractData.error) {
+                renderError(extractData.error);
+                return;
+            }
+            syllabusText = extractData.text;
+            setAnalyzeStage("Analyzing with Claude...");
         }
+
+        const response = await fetch("/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ syllabus_text: syllabusText })
+        });
 
         const data = await response.json();
         if (data.error) {

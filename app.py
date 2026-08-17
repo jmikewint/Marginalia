@@ -84,20 +84,32 @@ def me():
 
 # ---- Main app routes (now require login) ----
 
+@app.route("/extract-text", methods=["POST"])
+@login_required
+def extract_text():
+    """Splits file reading out from /analyze so the client gets a real,
+    observable stage boundary (this request completing) instead of having to
+    fake a "reading file..." status during a single combined request."""
+    if "syllabus_file" not in request.files or request.files["syllabus_file"].filename == "":
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["syllabus_file"]
+    try:
+        syllabus_text = extract_text_from_file(file)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    if not syllabus_text.strip():
+        return jsonify({"error": "No syllabus text or file provided"}), 400
+
+    return jsonify({"text": syllabus_text})
+
+
 @app.route("/analyze", methods=["POST"])
 @login_required
 def analyze():
-    syllabus_text = ""
-
-    if "syllabus_file" in request.files and request.files["syllabus_file"].filename != "":
-        file = request.files["syllabus_file"]
-        try:
-            syllabus_text = extract_text_from_file(file)
-        except ValueError as e:
-            return jsonify({"error": str(e)}), 400
-    else:
-        data = request.get_json(silent=True) or {}
-        syllabus_text = data.get("syllabus_text", "")
+    data = request.get_json(silent=True) or {}
+    syllabus_text = data.get("syllabus_text", "")
 
     if not syllabus_text.strip():
         return jsonify({"error": "No syllabus text or file provided"}), 400

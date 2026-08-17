@@ -574,13 +574,25 @@ h1 {
     color: var(--text);
 }
 .dropzone-file svg { color: var(--accent); flex-shrink: 0; }
+.dropzone-file-info {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    max-width: 300px;
+}
 .dropzone-filename {
     font-size: 14px;
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 300px;
+    min-width: 0;
+}
+.dropzone-filesize {
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
 }
 .dropzone-remove {
     position: relative;
@@ -990,7 +1002,7 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
     h1 { font-size: 24px; }
     #main-header { flex-direction: column; gap: 12px; }
     #theme-toggle { margin-top: 0; }
-    .dropzone-filename { max-width: 200px; }
+    .dropzone-file-info { max-width: 200px; }
 }
 
 /* ---- Reduced motion ---- */
