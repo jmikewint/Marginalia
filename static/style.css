@@ -15,6 +15,33 @@
     font-display: swap;
 }
 
+/* ---- Theme-crossfade registration ----
+   Typing these as <color> lets the browser interpolate the custom property
+   itself, so every element reading var(--bg) etc. crossfades smoothly on
+   theme toggle without each component needing its own color transition.
+   Unsupported browsers just ignore this block and fall back to an instant
+   switch, same as before this existed. */
+
+@property --bg { syntax: '<color>'; inherits: true; initial-value: #eef0f4; }
+@property --card-bg { syntax: '<color>'; inherits: true; initial-value: #ffffff; }
+@property --text { syntax: '<color>'; inherits: true; initial-value: #14151a; }
+@property --text-muted { syntax: '<color>'; inherits: true; initial-value: #62667a; }
+@property --border { syntax: '<color>'; inherits: true; initial-value: #dfe1e8; }
+@property --input-border { syntax: '<color>'; inherits: true; initial-value: #c7cbd6; }
+@property --accent { syntax: '<color>'; inherits: true; initial-value: #372f9e; }
+@property --accent-hover { syntax: '<color>'; inherits: true; initial-value: #2c2680; }
+@property --accent-soft { syntax: '<color>'; inherits: true; initial-value: #edecfb; }
+@property --accent-contrast { syntax: '<color>'; inherits: true; initial-value: #ffffff; }
+@property --error-bg { syntax: '<color>'; inherits: true; initial-value: #fef2f2; }
+@property --error-border { syntax: '<color>'; inherits: true; initial-value: #fca5a5; }
+@property --error-text { syntax: '<color>'; inherits: true; initial-value: #b91c1c; }
+@property --success-bg { syntax: '<color>'; inherits: true; initial-value: #f0fdf4; }
+@property --success-border { syntax: '<color>'; inherits: true; initial-value: #86efac; }
+@property --success-text { syntax: '<color>'; inherits: true; initial-value: #15803d; }
+@property --warning-bg { syntax: '<color>'; inherits: true; initial-value: #fffbeb; }
+@property --warning-border { syntax: '<color>'; inherits: true; initial-value: #fde68a; }
+@property --warning-text { syntax: '<color>'; inherits: true; initial-value: #b45309; }
+
 /* ---- Tokens ---- */
 
 :root {
@@ -56,6 +83,19 @@
 
     --shadow-card: 0 1px 2px rgba(20, 21, 26, 0.04), 0 6px 20px rgba(20, 21, 26, 0.05);
     --shadow-modal: 0 20px 60px rgba(20, 21, 26, 0.22);
+
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+    transition:
+        --bg 180ms var(--ease-in-out), --card-bg 180ms var(--ease-in-out),
+        --text 180ms var(--ease-in-out), --text-muted 180ms var(--ease-in-out),
+        --border 180ms var(--ease-in-out), --input-border 180ms var(--ease-in-out),
+        --accent 180ms var(--ease-in-out), --accent-hover 180ms var(--ease-in-out),
+        --accent-soft 180ms var(--ease-in-out), --accent-contrast 180ms var(--ease-in-out),
+        --error-bg 180ms var(--ease-in-out), --error-border 180ms var(--ease-in-out), --error-text 180ms var(--ease-in-out),
+        --success-bg 180ms var(--ease-in-out), --success-border 180ms var(--ease-in-out), --success-text 180ms var(--ease-in-out),
+        --warning-bg 180ms var(--ease-in-out), --warning-border 180ms var(--ease-in-out), --warning-text 180ms var(--ease-in-out);
 }
 
 [data-theme="dark"] {
@@ -106,6 +146,11 @@ button, input, textarea { font-family: inherit; }
 }
 
 /* ---- Auth screen ---- */
+
+#auth-screen, #app-screen {
+    transition: opacity 160ms var(--ease-out);
+}
+#auth-screen.screen-fade, #app-screen.screen-fade { opacity: 0; }
 
 #auth-screen {
     width: 100%;
@@ -185,6 +230,7 @@ button, input, textarea { font-family: inherit; }
     font-weight: 700;
     font-size: 22px;
     margin: 0 0 20px;
+    transition: opacity 150ms var(--ease-out);
 }
 .input-label {
     display: block;
@@ -242,6 +288,7 @@ button, input, textarea { font-family: inherit; }
     font-size: 13px;
     color: var(--text-muted);
     cursor: pointer;
+    transition: opacity 150ms var(--ease-out);
 }
 #auth-toggle:hover { color: var(--accent); }
 #auth-toggle:focus-visible { outline-offset: 3px; border-radius: 4px; }
@@ -286,10 +333,26 @@ button, input, textarea { font-family: inherit; }
     justify-content: space-between;
     align-items: center;
     gap: 8px;
-    transition: background-color 0.15s;
+    max-height: 64px;
+    opacity: 1;
+    overflow: hidden;
+    transition:
+        background-color 150ms var(--ease-out),
+        opacity 150ms var(--ease-out), transform 150ms var(--ease-out),
+        max-height 200ms var(--ease-in-out) 50ms,
+        margin-bottom 200ms var(--ease-in-out) 50ms,
+        padding 200ms var(--ease-in-out) 50ms;
 }
 .saved-item:hover { background: var(--bg); }
 .saved-item.saved-item-editing { background: var(--bg); }
+.saved-item.saved-item-removing {
+    opacity: 0;
+    transform: scale(0.96);
+    max-height: 0;
+    margin-bottom: 0;
+    padding: 0;
+    pointer-events: none;
+}
 .saved-item .saved-name {
     cursor: pointer;
     flex: 1;
@@ -368,6 +431,13 @@ button, input, textarea { font-family: inherit; }
     max-width: 760px;
     margin: 48px auto;
     padding: 0 24px;
+}
+#results {
+    transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+#results.results-swapping {
+    opacity: 0;
+    transform: translateY(4px);
 }
 #main-header {
     display: flex;
@@ -659,7 +729,10 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
     justify-content: center;
     z-index: 100;
     padding: 20px;
+    opacity: 0;
+    transition: opacity 160ms var(--ease-out);
 }
+.modal-overlay.modal-open { opacity: 1; }
 #save-modal {
     background: var(--card-bg);
     border-radius: var(--radius-lg);
@@ -667,7 +740,12 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
     width: 100%;
     max-width: 360px;
     box-shadow: var(--shadow-modal);
+    /* Modals aren't anchored to a trigger, so they stay center-origin and
+       scale up from a slightly-smaller (never zero) starting size. */
+    transform: scale(0.95);
+    transition: transform 180ms var(--ease-out);
 }
+.modal-overlay.modal-open #save-modal { transform: scale(1); }
 #save-modal h2 {
     font-family: var(--font-display);
     font-weight: 700;
@@ -731,10 +809,17 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
     z-index: 200;
     opacity: 0;
     transform: translateX(-50%) translateY(8px);
-    transition: opacity 0.2s, transform 0.2s;
+    /* Faster exit than entrance: release should always feel snappier than
+       the deliberate arrival. */
+    transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
     pointer-events: none;
 }
-#toast.toast-visible { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+#toast.toast-visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+    pointer-events: auto;
+}
 #toast.toast-success { border-color: var(--success-border); color: var(--success-text); }
 #toast.toast-warning { border-color: var(--warning-border); color: var(--warning-text); }
 #toast span { flex: 1; min-width: 0; }
@@ -754,6 +839,7 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
 /* ---- Utility ---- */
 
 .hidden { display: none !important; }
+.text-fade-out { opacity: 0; }
 
 .spinner {
     display: inline-block;

@@ -1,6 +1,15 @@
 let currentData = null;
 let isSignupMode = false;
 
+// ---- Motion ----
+// The CSS transition durations already collapse under prefers-reduced-motion
+// (see the global override in style.css). This mirrors that for the JS side
+// of animations, where we set a real timer to wait out a CSS transition
+// before doing a final DOM change (e.g. hiding an element after it fades).
+function transitionMs(ms) {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : ms;
+}
+
 // ---- Dark mode ----
 
 function initTheme() {
@@ -48,13 +57,60 @@ function showApp(username) {
     loadSavedList();
 }
 
+// showAuthScreen/showApp stay instant - checkAuth() uses them on every page
+// load to settle which screen belongs to the current session, which isn't a
+// user-triggered transition and shouldn't animate. transitionToAuthScreen/
+// transitionToApp wrap them for the two actions that ARE user-triggered:
+// logging out, and a successful login/signup.
+const SCREEN_TRANSITION_MS = 160;
+
+function transitionToAuthScreen() {
+    const appScreen = document.getElementById("app-screen");
+    appScreen.classList.add("screen-fade");
+    setTimeout(() => {
+        showAuthScreen();
+        appScreen.classList.remove("screen-fade");
+
+        const authScreen = document.getElementById("auth-screen");
+        authScreen.classList.add("screen-fade");
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => authScreen.classList.remove("screen-fade"));
+        });
+    }, transitionMs(SCREEN_TRANSITION_MS));
+}
+
+function transitionToApp(username) {
+    const authScreen = document.getElementById("auth-screen");
+    authScreen.classList.add("screen-fade");
+    setTimeout(() => {
+        showApp(username);
+        authScreen.classList.remove("screen-fade");
+
+        const appScreen = document.getElementById("app-screen");
+        appScreen.classList.add("screen-fade");
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => appScreen.classList.remove("screen-fade"));
+        });
+    }, transitionMs(SCREEN_TRANSITION_MS));
+}
+
+const AUTH_MODE_FADE_MS = 150;
+
+function fadeTextSwap(el, newText) {
+    el.classList.add("text-fade-out");
+    setTimeout(() => {
+        el.textContent = newText;
+        el.classList.remove("text-fade-out");
+    }, transitionMs(AUTH_MODE_FADE_MS));
+}
+
 function toggleAuthMode() {
     isSignupMode = !isSignupMode;
-    document.getElementById("auth-title").textContent = isSignupMode ? "Sign Up" : "Log In";
-    document.getElementById("auth-submit-btn").textContent = isSignupMode ? "Sign Up" : "Log In";
-    document.getElementById("auth-toggle").textContent = isSignupMode
+    fadeTextSwap(document.getElementById("auth-title"), isSignupMode ? "Sign Up" : "Log In");
+    fadeTextSwap(document.getElementById("auth-submit-btn"), isSignupMode ? "Sign Up" : "Log In");
+    fadeTextSwap(document.getElementById("auth-toggle"), isSignupMode
         ? "Already have an account? Log in"
-        : "Don't have an account? Sign up";
+        : "Don't have an account? Sign up");
     document.getElementById("auth-error").textContent = "";
 }
 
@@ -90,12 +146,12 @@ document.getElementById("auth-submit-btn").addEventListener("click", async () =>
         return;
     }
 
-    showApp(data.username);
+    transitionToApp(data.username);
 });
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
     await fetch("/logout", { method: "POST" });
-    showAuthScreen();
+    transitionToAuthScreen();
 });
 
 // ---- Password visibility toggle ----
@@ -271,13 +327,18 @@ async function confirmRename(id, newName) {
 // ---- Delete with undo ----
 
 const pendingDeletes = new Map();
+const DELETE_COLLAPSE_MS = 250;
 
 function scheduleDelete(id, courseName, itemEl) {
     if (pendingDeletes.has(id)) return;
 
-    itemEl.style.display = "none";
+    itemEl.classList.add("saved-item-removing");
+    const collapseTimer = setTimeout(() => {
+        itemEl.style.display = "none";
+    }, transitionMs(DELETE_COLLAPSE_MS));
+
     const timer = setTimeout(() => finalizeDelete(id), 5000);
-    pendingDeletes.set(id, { timer });
+    pendingDeletes.set(id, { timer, collapseTimer });
 
     showToast(`Removed "${courseName}"`, {
         variant: "neutral",
@@ -301,14 +362,39 @@ function undoDelete(id) {
     const pending = pendingDeletes.get(id);
     if (!pending) return;
     clearTimeout(pending.timer);
+    clearTimeout(pending.collapseTimer);
     pendingDeletes.delete(id);
     loadSavedList();
 }
 
 // ---- Results rendering ----
 
-function renderResults(data) {
+const RESULTS_SWAP_MS = 150;
+
+// Crossfades #results' content instead of the instant innerHTML replacement
+// used elsewhere - this is specifically for switching between "a syllabus's
+// results" and "the dashboard", which are visually unrelated layouts, not
+// for every content update (e.g. performAnalyze clearing to a loading state
+// stays instant, since animating a fade to empty right before a fetch just
+// delays the spinner appearing).
+function swapResultsHtml(html, afterSwap) {
     const resultsDiv = document.getElementById("results");
+
+    if (!resultsDiv.innerHTML.trim()) {
+        resultsDiv.innerHTML = html;
+        if (afterSwap) afterSwap();
+        return;
+    }
+
+    resultsDiv.classList.add("results-swapping");
+    setTimeout(() => {
+        resultsDiv.innerHTML = html;
+        resultsDiv.classList.remove("results-swapping");
+        if (afterSwap) afterSwap();
+    }, transitionMs(RESULTS_SWAP_MS));
+}
+
+function renderResults(data) {
     let html = "";
 
     if (data.flags && data.flags.length > 0) {
@@ -347,39 +433,40 @@ function renderResults(data) {
     }
 
     html += `<div style="margin-top:20px;"><button id="save-btn">Save this syllabus</button></div>`;
-    resultsDiv.innerHTML = html;
 
-    if (data.deadlines && data.deadlines.length > 0) {
-        document.getElementById("export-cal-btn").addEventListener("click", async () => {
-            const calResponse = await fetch("/export-calendar", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ deadlines: data.deadlines })
+    swapResultsHtml(html, () => {
+        if (data.deadlines && data.deadlines.length > 0) {
+            document.getElementById("export-cal-btn").addEventListener("click", async () => {
+                const calResponse = await fetch("/export-calendar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ deadlines: data.deadlines })
+                });
+                const skippedCount = parseInt(calResponse.headers.get("X-Skipped-Count") || "0", 10);
+                const skippedItemsHeader = calResponse.headers.get("X-Skipped-Items");
+
+                const blob = await calResponse.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "syllabus-deadlines.ics";
+                a.click();
+                window.URL.revokeObjectURL(url);
+
+                if (skippedCount > 0) {
+                    const names = skippedItemsHeader ? decodeURIComponent(skippedItemsHeader) : "";
+                    const noun = skippedCount === 1 ? "deadline" : "deadlines";
+                    showToast(
+                        `${skippedCount} ${noun} couldn't be added (date not recognized)${names ? `: ${names}` : ""}.`,
+                        { variant: "warning", duration: 6000 }
+                    );
+                }
             });
-            const skippedCount = parseInt(calResponse.headers.get("X-Skipped-Count") || "0", 10);
-            const skippedItemsHeader = calResponse.headers.get("X-Skipped-Items");
+        }
 
-            const blob = await calResponse.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "syllabus-deadlines.ics";
-            a.click();
-            window.URL.revokeObjectURL(url);
-
-            if (skippedCount > 0) {
-                const names = skippedItemsHeader ? decodeURIComponent(skippedItemsHeader) : "";
-                const noun = skippedCount === 1 ? "deadline" : "deadlines";
-                showToast(
-                    `${skippedCount} ${noun} couldn't be added (date not recognized)${names ? `: ${names}` : ""}.`,
-                    { variant: "warning", duration: 6000 }
-                );
-            }
+        document.getElementById("save-btn").addEventListener("click", () => {
+            openSaveModal(data);
         });
-    }
-
-    document.getElementById("save-btn").addEventListener("click", () => {
-        openSaveModal(data);
     });
 }
 
@@ -387,6 +474,8 @@ function renderResults(data) {
 
 let pendingSaveData = null;
 let saveModalOpener = null;
+let closeModalTimer = null;
+const MODAL_TRANSITION_MS = 180;
 
 function openSaveModal(data) {
     pendingSaveData = data;
@@ -394,13 +483,28 @@ function openSaveModal(data) {
     const input = document.getElementById("save-course-name");
     document.getElementById("save-name-error").textContent = "";
     input.value = (data && data.course_name) || "";
-    document.getElementById("save-modal-overlay").classList.remove("hidden");
+
+    clearTimeout(closeModalTimer);
+    const overlay = document.getElementById("save-modal-overlay");
+    overlay.classList.remove("hidden");
+    // Two frames: the browser needs a paint between removing .hidden (so the
+    // overlay actually exists in the layout) and adding .modal-open, or it
+    // collapses the transition's starting and ending states into one jump.
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => overlay.classList.add("modal-open"));
+    });
+
     input.focus();
     input.select();
 }
 
 function closeSaveModal() {
-    document.getElementById("save-modal-overlay").classList.add("hidden");
+    const overlay = document.getElementById("save-modal-overlay");
+    overlay.classList.remove("modal-open");
+
+    clearTimeout(closeModalTimer);
+    closeModalTimer = setTimeout(() => overlay.classList.add("hidden"), transitionMs(MODAL_TRANSITION_MS));
+
     pendingSaveData = null;
     if (saveModalOpener) {
         saveModalOpener.focus();
@@ -539,10 +643,9 @@ function renderError(message) {
 async function renderDashboard() {
     const res = await fetch("/dashboard");
     const data = await res.json();
-    const resultsDiv = document.getElementById("results");
 
     if (data.deadlines.length === 0) {
-        resultsDiv.innerHTML = `<div class="section">No saved syllabi yet. Analyze and save one first.</div>`;
+        swapResultsHtml(`<div class="section">No saved syllabi yet. Analyze and save one first.</div>`);
         return;
     }
 
@@ -554,7 +657,7 @@ async function renderDashboard() {
         </div>`;
     });
     html += `</div>`;
-    resultsDiv.innerHTML = html;
+    swapResultsHtml(html);
 }
 
 document.getElementById("dashboard-btn").addEventListener("click", renderDashboard);
