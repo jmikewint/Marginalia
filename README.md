@@ -67,8 +67,5 @@ This project was built iteratively with heavy use of AI-assisted design critique
 ![Main results view](screenshots/Results.png)
 ![Light mode](screenshots/Light.png)
 ![Dashboard](screenshots/Dashboard.png)
-![Drag & Drop](screenshots/Drag & Drop.png)
+![Drag](screenshots/Drag.png)
 ![Severity](screenshots/Severity.png)
-
-<img width="1904" height="910" alt="Screen1" src="https://github.com/user-attachments/assets/ba4b889d-d0c0-4dbb-859c-154c5330a9c8" />
-<img width="1906" height="907" alt="Screen 2" src="https://github.com/user-attachments/assets/4fda5a05-e56b-4d82-b56c-20088ea537e2" />
