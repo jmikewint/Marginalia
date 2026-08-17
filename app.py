@@ -255,11 +255,15 @@ def _build_ics(deadlines):
             skipped.append(deadline.get("item") or "Deadline")
             continue
 
+        item = deadline.get("item", "Deadline")
+        course = deadline.get("course")
+        summary = f"{course}: {item}" if course else item
+
         lines += [
             "BEGIN:VEVENT",
             f"UID:{i}-{datetime.now().timestamp()}@syllabus-translator",
             f"DTSTART;VALUE=DATE:{date_str}",
-            f"SUMMARY:{deadline.get('item', 'Deadline')}",
+            f"SUMMARY:{summary}",
             "END:VEVENT",
         ]
 

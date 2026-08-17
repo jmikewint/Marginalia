@@ -283,12 +283,19 @@ button, input, textarea { font-family: inherit; }
 #password-toggle:hover { background: var(--bg); color: var(--text); }
 #auth-error { color: var(--error-text); font-size: 13px; margin-bottom: 10px; min-height: 16px; }
 #auth-toggle {
+    position: relative;
     text-align: left;
     margin-top: 14px;
     font-size: 13px;
     color: var(--text-muted);
     cursor: pointer;
     transition: opacity 150ms var(--ease-out);
+}
+#auth-toggle::before {
+    /* Invisible touch-target expansion, same technique as #password-toggle. */
+    content: "";
+    position: absolute;
+    inset: -13px;
 }
 #auth-toggle:hover { color: var(--accent); }
 #auth-toggle:focus-visible { outline-offset: 3px; border-radius: 4px; }
@@ -323,7 +330,15 @@ button, input, textarea { font-family: inherit; }
     padding-bottom: 18px;
     border-bottom: 1px solid var(--border);
 }
-#logout-btn { font-size: 12px; padding: 5px 10px; }
+#logout-btn { position: relative; font-size: 12px; padding: 5px 10px; }
+#logout-btn::before {
+    /* Invisible touch-target expansion, same technique as #password-toggle -
+       keeps this a small chip visually so it doesn't crowd the username
+       text next to it in a narrow sidebar row. */
+    content: "";
+    position: absolute;
+    inset: -9px;
+}
 .saved-item {
     padding: 6px 6px 6px 12px;
     border-radius: var(--radius-sm);
@@ -445,6 +460,7 @@ button, input, textarea { font-family: inherit; }
     color: var(--text);
 }
 .empty-state-hint {
+    position: relative;
     display: block;
     width: 100%;
     margin: 0;
@@ -460,6 +476,12 @@ button, input, textarea { font-family: inherit; }
     text-align: center;
     cursor: pointer;
     transition: color 150ms var(--ease-out);
+}
+.empty-state-hint::before {
+    /* Invisible touch-target expansion, same technique as #password-toggle. */
+    content: "";
+    position: absolute;
+    inset: -13px;
 }
 .empty-state-hint:hover, .empty-state-hint:focus-visible {
     color: var(--accent);
@@ -498,7 +520,7 @@ h1 {
     background: none;
     border: 1px solid var(--input-border);
     color: var(--text);
-    padding: 7px 14px;
+    padding: 13px 16px;
     font-size: 13px;
     margin-top: 2px;
     border-radius: var(--radius-sm);
@@ -667,7 +689,7 @@ textarea:disabled {
 
 button {
     margin-top: 14px;
-    padding: 11px 22px;
+    padding: 14px 22px;
     background: var(--accent);
     color: var(--accent-contrast);
     border: none;
@@ -715,78 +737,6 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
     font-size: 13px;
     color: var(--text-muted);
     line-height: 1.5;
-}
-.section-heading-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.legend-info-wrap {
-    position: relative;
-    display: inline-flex;
-}
-.legend-info {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    margin: 0;
-    padding: 0;
-    border: 1px solid var(--input-border);
-    border-radius: 50%;
-    background: none;
-    color: var(--text-muted);
-    font-family: var(--font-body);
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: none;
-    letter-spacing: normal;
-    line-height: 1;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out);
-}
-.legend-info::before {
-    /* Invisible touch-target expansion, same technique as #password-toggle. */
-    content: "";
-    position: absolute;
-    inset: -14px;
-}
-.legend-info:hover, .legend-info:focus-visible {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-.legend-tooltip {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%) translateY(4px);
-    width: max-content;
-    max-width: 260px;
-    background: var(--card-bg);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-modal);
-    padding: 10px 12px;
-    font-family: var(--font-body);
-    font-size: 12px;
-    font-weight: 400;
-    text-transform: none;
-    letter-spacing: normal;
-    line-height: 1.5;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
-    z-index: 10;
-}
-.legend-info-wrap:hover .legend-tooltip,
-.legend-info-wrap:focus-within .legend-tooltip {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-    pointer-events: auto;
 }
 .grading-row, .deadline-row {
     display: flex;
@@ -894,6 +844,10 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
     margin-bottom: 4px;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
+#save-modal input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 #save-modal input:focus-visible {
     outline: none;
     border-color: var(--accent);
@@ -993,10 +947,16 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
     body { flex-direction: column; }
     #app-screen { flex-direction: column; }
     #sidebar {
+        /* Desktop keeps the sidebar visually first (order: -1) while it's
+           second in the DOM for heading order. On mobile that would put an
+           often-empty sidebar above the upload/paste/analyze flow, so let
+           DOM order (#main first) win here instead. */
+        order: 0;
         width: 100%;
         min-height: auto;
         border-right: none;
-        border-bottom: 1px solid var(--border);
+        border-top: 1px solid var(--border);
+        border-bottom: none;
     }
     #main { margin: 28px auto; padding: 0 16px; }
     h1 { font-size: 24px; }

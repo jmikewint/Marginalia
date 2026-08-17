@@ -417,38 +417,44 @@ function swapResultsHtml(html, afterSwap) {
     }, transitionMs(RESULTS_SWAP_MS));
 }
 
-// The severity legend shows in full for a new user's first few times seeing
-// analyzed flags, then collapses into a small "?" that reveals the same text
-// on hover/focus - same localStorage-remembers-a-preference pattern as the
-// theme toggle, just counting views instead of storing a single value.
-const FLAGS_LEGEND_SEEN_KEY = "flagsLegendSeenCount";
-const FLAGS_LEGEND_FULL_VIEWS = 3;
 const SEVERITY_LEGEND_TEXT = `<strong style="color: var(--error-text);">High</strong> could seriously hurt your grade or standing. <strong style="color: var(--warning-text);">Medium</strong> is worth knowing, but less urgent.`;
 
-function recordFlagsLegendSeen() {
-    const count = parseInt(localStorage.getItem(FLAGS_LEGEND_SEEN_KEY) || "0", 10) + 1;
-    localStorage.setItem(FLAGS_LEGEND_SEEN_KEY, String(count));
-    return count;
+// Shared by both the single-syllabus results view and the Dashboard's
+// combined view, since both export the same {item, date} shaped deadlines
+// to the same endpoint.
+async function exportDeadlinesToCalendar(deadlines) {
+    const calResponse = await fetch("/export-calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deadlines })
+    });
+    const skippedCount = parseInt(calResponse.headers.get("X-Skipped-Count") || "0", 10);
+    const skippedItemsHeader = calResponse.headers.get("X-Skipped-Items");
+
+    const blob = await calResponse.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "syllabus-deadlines.ics";
+    a.click();
+    window.URL.revokeObjectURL(url);
+
+    if (skippedCount > 0) {
+        const names = skippedItemsHeader ? decodeURIComponent(skippedItemsHeader) : "";
+        const noun = skippedCount === 1 ? "deadline" : "deadlines";
+        showToast(
+            `${skippedCount} ${noun} couldn't be added (date not recognized)${names ? `: ${names}` : ""}.`,
+            { variant: "warning", duration: 6000 }
+        );
+    }
 }
 
 function renderResults(data) {
     let html = "";
 
     if (data.flags && data.flags.length > 0) {
-        const seenCount = recordFlagsLegendSeen();
-
-        if (seenCount <= FLAGS_LEGEND_FULL_VIEWS) {
-            html += `<div class="section"><h2>Watch out for</h2>
-                <p class="section-hint">${SEVERITY_LEGEND_TEXT}</p>`;
-        } else {
-            html += `<div class="section"><h2 class="section-heading-row">
-                <span>Watch out for</span>
-                <span class="legend-info-wrap">
-                    <button type="button" class="legend-info" aria-label="What do severity levels mean?" aria-describedby="severity-legend-tooltip">?</button>
-                    <span class="legend-tooltip" id="severity-legend-tooltip" role="tooltip">${SEVERITY_LEGEND_TEXT}</span>
-                </span>
-            </h2>`;
-        }
+        html += `<div class="section"><h2>Watch out for</h2>
+            <p class="section-hint">${SEVERITY_LEGEND_TEXT}</p>`;
         data.flags.forEach(f => {
             html += `<div class="flag ${f.severity}">
                 <svg class="flag-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -485,31 +491,8 @@ function renderResults(data) {
 
     swapResultsHtml(html, () => {
         if (data.deadlines && data.deadlines.length > 0) {
-            document.getElementById("export-cal-btn").addEventListener("click", async () => {
-                const calResponse = await fetch("/export-calendar", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ deadlines: data.deadlines })
-                });
-                const skippedCount = parseInt(calResponse.headers.get("X-Skipped-Count") || "0", 10);
-                const skippedItemsHeader = calResponse.headers.get("X-Skipped-Items");
-
-                const blob = await calResponse.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "syllabus-deadlines.ics";
-                a.click();
-                window.URL.revokeObjectURL(url);
-
-                if (skippedCount > 0) {
-                    const names = skippedItemsHeader ? decodeURIComponent(skippedItemsHeader) : "";
-                    const noun = skippedCount === 1 ? "deadline" : "deadlines";
-                    showToast(
-                        `${skippedCount} ${noun} couldn't be added (date not recognized)${names ? `: ${names}` : ""}.`,
-                        { variant: "warning", duration: 6000 }
-                    );
-                }
+            document.getElementById("export-cal-btn").addEventListener("click", () => {
+                exportDeadlinesToCalendar(data.deadlines);
             });
         }
 
@@ -583,6 +566,7 @@ function trapSaveModalTab(e) {
 async function confirmSave() {
     const input = document.getElementById("save-course-name");
     const errorDiv = document.getElementById("save-name-error");
+    const confirmBtn = document.getElementById("save-modal-confirm");
     const courseName = input.value.trim();
 
     if (!courseName) {
@@ -591,15 +575,26 @@ async function confirmSave() {
         return;
     }
 
-    await fetch("/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course_name: courseName, data: pendingSaveData })
-    });
+    // Disable both the button and Enter-to-submit's target so a double-click
+    // or a stray double keypress can't fire two /save requests and create
+    // duplicate rows - matches #analyze-btn's existing guard.
+    confirmBtn.disabled = true;
+    input.disabled = true;
 
-    closeSaveModal();
-    loadSavedList();
-    showToast(`Saved "${courseName}"`);
+    try {
+        await fetch("/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ course_name: courseName, data: pendingSaveData })
+        });
+
+        closeSaveModal();
+        loadSavedList();
+        showToast(`Saved "${courseName}"`);
+    } finally {
+        confirmBtn.disabled = false;
+        input.disabled = false;
+    }
 }
 
 document.getElementById("save-modal-confirm").addEventListener("click", confirmSave);
@@ -705,8 +700,14 @@ async function renderDashboard() {
             <strong>${d.date}</strong>
         </div>`;
     });
+    html += `<button id="dashboard-export-btn" class="btn-secondary">Export to Calendar</button>`;
     html += `</div>`;
-    swapResultsHtml(html);
+
+    swapResultsHtml(html, () => {
+        document.getElementById("dashboard-export-btn").addEventListener("click", () => {
+            exportDeadlinesToCalendar(data.deadlines);
+        });
+    });
 }
 
 document.getElementById("dashboard-btn").addEventListener("click", renderDashboard);
