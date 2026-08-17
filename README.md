@@ -67,6 +67,6 @@ This project was built iteratively with heavy use of AI-assisted design critique
 ![Main results view](screenshots/Results.png)
 ![Light mode](screenshots/Light.png)
 ![Dashboard](screenshots/Dashboard.png)
-![Drag & Drop](screenshots/Drag & Drop.png)
+![Drag](screenshots/Drag.png)
 ![Severity](screenshots/Severity.png)
 
