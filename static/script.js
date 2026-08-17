@@ -194,9 +194,21 @@ async function loadSavedList() {
         return;
     }
 
-    listDiv.innerHTML = items.map(item => `
+    listDiv.innerHTML = items.map(item => {
+        const deadlineText = item.deadline_count === 1 ? "1 deadline" : `${item.deadline_count} deadlines`;
+        const severityLabel = item.flag_severity === "high" ? "high severity flags"
+            : item.flag_severity === "medium" ? "medium severity flags"
+            : "";
+        const dot = item.flag_severity
+            ? `<span class="saved-item-dot severity-${item.flag_severity}" aria-hidden="true"></span>`
+            : "";
+
+        return `
         <div class="saved-item" data-id="${item.id}">
-            <span class="saved-name" role="button" tabindex="0" aria-label="Open ${item.course_name}">${item.course_name}</span>
+            <span class="saved-name" role="button" tabindex="0" aria-label="Open ${item.course_name}, ${deadlineText}${severityLabel ? `, has ${severityLabel}` : ""}">
+                <span class="saved-name-title">${dot}<span class="saved-name-text">${item.course_name}</span></span>
+                <span class="saved-item-meta">${deadlineText}</span>
+            </span>
             <div class="saved-item-actions">
                 <button type="button" class="rename-btn" data-id="${item.id}" aria-label="Rename ${item.course_name}">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -209,8 +221,8 @@ async function loadSavedList() {
                     </svg>
                 </button>
             </div>
-        </div>
-    `).join("");
+        </div>`;
+    }).join("");
 
     async function openSavedItem(id) {
         const res = await fetch(`/saved/${id}`);
@@ -235,7 +247,7 @@ async function loadSavedList() {
         el.addEventListener("click", (e) => {
             const id = e.currentTarget.dataset.id;
             const itemEl = e.currentTarget.closest(".saved-item");
-            const courseName = itemEl.querySelector(".saved-name").textContent;
+            const courseName = itemEl.querySelector(".saved-name-text").textContent;
             scheduleDelete(id, courseName, itemEl);
         });
     });
@@ -244,7 +256,7 @@ async function loadSavedList() {
         el.addEventListener("click", (e) => {
             const id = e.currentTarget.dataset.id;
             const itemEl = e.currentTarget.closest(".saved-item");
-            const currentName = itemEl.querySelector(".saved-name").textContent;
+            const currentName = itemEl.querySelector(".saved-name-text").textContent;
             enterRenameMode(itemEl, id, currentName);
         });
     });

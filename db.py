@@ -80,7 +80,7 @@ def save_syllabus(user_id, course_name, data_json):
 def list_syllabi(user_id):
     conn = get_connection()
     rows = conn.execute(
-        "SELECT id, course_name, created_at FROM syllabi WHERE user_id = ? ORDER BY created_at DESC",
+        "SELECT id, course_name, created_at, data_json FROM syllabi WHERE user_id = ? ORDER BY created_at DESC",
         (user_id,)
     ).fetchall()
     conn.close()

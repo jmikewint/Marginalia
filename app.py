@@ -130,7 +130,28 @@ def save():
 @app.route("/saved", methods=["GET"])
 @login_required
 def saved_list():
-    return jsonify(db.list_syllabi(session["user_id"]))
+    syllabi = db.list_syllabi(session["user_id"])
+    result = []
+
+    for item in syllabi:
+        data = json.loads(item["data_json"])
+        flags = data.get("flags", [])
+        if any(f.get("severity") == "high" for f in flags):
+            flag_severity = "high"
+        elif flags:
+            flag_severity = "medium"
+        else:
+            flag_severity = None
+
+        result.append({
+            "id": item["id"],
+            "course_name": item["course_name"],
+            "created_at": item["created_at"],
+            "deadline_count": len(data.get("deadlines", [])),
+            "flag_severity": flag_severity
+        })
+
+    return jsonify(result)
 
 
 @app.route("/saved/<int:syllabus_id>", methods=["GET"])
