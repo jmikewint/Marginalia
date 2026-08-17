@@ -445,10 +445,26 @@ button, input, textarea { font-family: inherit; }
     color: var(--text);
 }
 .empty-state-hint {
+    display: block;
+    width: 100%;
     margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 0;
+    font: inherit;
     font-size: 12px;
+    font-weight: 400;
     line-height: 1.5;
+    color: var(--text-muted);
+    text-align: center;
+    cursor: pointer;
+    transition: color 150ms var(--ease-out);
 }
+.empty-state-hint:hover, .empty-state-hint:focus-visible {
+    color: var(--accent);
+}
+.empty-state-hint:active { transform: none; }
 
 #main {
     flex: 1;
@@ -687,6 +703,78 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
     font-size: 13px;
     color: var(--text-muted);
     line-height: 1.5;
+}
+.section-heading-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.legend-info-wrap {
+    position: relative;
+    display: inline-flex;
+}
+.legend-info {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--input-border);
+    border-radius: 50%;
+    background: none;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: normal;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+.legend-info::before {
+    /* Invisible touch-target expansion, same technique as #password-toggle. */
+    content: "";
+    position: absolute;
+    inset: -14px;
+}
+.legend-info:hover, .legend-info:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.legend-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    width: max-content;
+    max-width: 260px;
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-modal);
+    padding: 10px 12px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    line-height: 1.5;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+    z-index: 10;
+}
+.legend-info-wrap:hover .legend-tooltip,
+.legend-info-wrap:focus-within .legend-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
 }
 .grading-row, .deadline-row {
     display: flex;

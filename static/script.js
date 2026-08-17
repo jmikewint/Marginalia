@@ -6,8 +6,12 @@ let isSignupMode = false;
 // (see the global override in style.css). This mirrors that for the JS side
 // of animations, where we set a real timer to wait out a CSS transition
 // before doing a final DOM change (e.g. hiding an element after it fades).
+function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 function transitionMs(ms) {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : ms;
+    return prefersReducedMotion() ? 0 : ms;
 }
 
 // ---- Dark mode ----
@@ -180,9 +184,15 @@ const SAVED_LIST_EMPTY_STATE = `
             <path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
         </svg>
         <p class="empty-state-title">Nothing saved yet</p>
-        <p class="empty-state-hint">Analyze a syllabus below, then save it to keep it here.</p>
+        <button type="button" class="empty-state-hint" id="empty-state-cta">Analyze a syllabus below, then save it to keep it here.</button>
     </div>
 `;
+
+function focusSyllabusInput() {
+    const textarea = document.getElementById("syllabus-input");
+    textarea.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "center" });
+    textarea.focus();
+}
 
 async function loadSavedList() {
     const res = await fetch("/saved");
@@ -191,6 +201,7 @@ async function loadSavedList() {
 
     if (items.length === 0) {
         listDiv.innerHTML = SAVED_LIST_EMPTY_STATE;
+        document.getElementById("empty-state-cta").addEventListener("click", focusSyllabusInput);
         return;
     }
 
@@ -406,12 +417,38 @@ function swapResultsHtml(html, afterSwap) {
     }, transitionMs(RESULTS_SWAP_MS));
 }
 
+// The severity legend shows in full for a new user's first few times seeing
+// analyzed flags, then collapses into a small "?" that reveals the same text
+// on hover/focus - same localStorage-remembers-a-preference pattern as the
+// theme toggle, just counting views instead of storing a single value.
+const FLAGS_LEGEND_SEEN_KEY = "flagsLegendSeenCount";
+const FLAGS_LEGEND_FULL_VIEWS = 3;
+const SEVERITY_LEGEND_TEXT = `<strong style="color: var(--error-text);">High</strong> could seriously hurt your grade or standing. <strong style="color: var(--warning-text);">Medium</strong> is worth knowing, but less urgent.`;
+
+function recordFlagsLegendSeen() {
+    const count = parseInt(localStorage.getItem(FLAGS_LEGEND_SEEN_KEY) || "0", 10) + 1;
+    localStorage.setItem(FLAGS_LEGEND_SEEN_KEY, String(count));
+    return count;
+}
+
 function renderResults(data) {
     let html = "";
 
     if (data.flags && data.flags.length > 0) {
-        html += `<div class="section"><h2>Watch out for</h2>
-            <p class="section-hint"><strong style="color: var(--error-text);">High</strong> could seriously hurt your grade or standing. <strong style="color: var(--warning-text);">Medium</strong> is worth knowing, but less urgent.</p>`;
+        const seenCount = recordFlagsLegendSeen();
+
+        if (seenCount <= FLAGS_LEGEND_FULL_VIEWS) {
+            html += `<div class="section"><h2>Watch out for</h2>
+                <p class="section-hint">${SEVERITY_LEGEND_TEXT}</p>`;
+        } else {
+            html += `<div class="section"><h2 class="section-heading-row">
+                <span>Watch out for</span>
+                <span class="legend-info-wrap">
+                    <button type="button" class="legend-info" aria-label="What do severity levels mean?" aria-describedby="severity-legend-tooltip">?</button>
+                    <span class="legend-tooltip" id="severity-legend-tooltip" role="tooltip">${SEVERITY_LEGEND_TEXT}</span>
+                </span>
+            </h2>`;
+        }
         data.flags.forEach(f => {
             html += `<div class="flag ${f.severity}">
                 <svg class="flag-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
