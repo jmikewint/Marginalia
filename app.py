@@ -3,6 +3,8 @@ from claude_client import analyze_syllabus
 from file_parser import extract_text_from_file
 from datetime import datetime
 from urllib.parse import quote
+from flask_limiter import Limiter, Limit
+from flask_limiter.util import get_remote_address
 import db
 import json
 import re
@@ -14,6 +16,28 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 db.init_db()
+
+
+def analyze_rate_key():
+    """Key by account, not IP, so a shared campus/office network doesn't share one daily bucket."""
+    return f"user:{session['user_id']}" if "user_id" in session else get_remote_address()
+
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=[
+        Limit(
+            "30 per hour",
+            error_message="You're sending requests too quickly. Please wait a bit and try again.",
+        )
+    ],
+)
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({"error": e.description}), 429
 
 
 def login_required(f):
@@ -107,6 +131,12 @@ def extract_text():
 
 @app.route("/analyze", methods=["POST"])
 @login_required
+@limiter.limit(
+    "15 per day",
+    key_func=analyze_rate_key,
+    override_defaults=False,
+    error_message="You've used all 15 syllabus analyses for today. Come back tomorrow for more, or try pasting a shorter excerpt if you just need one section reviewed.",
+)
 def analyze():
     data = request.get_json(silent=True) or {}
     syllabus_text = data.get("syllabus_text", "")
