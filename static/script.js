@@ -117,13 +117,24 @@ document.getElementById("password-toggle").addEventListener("click", () => {
 
 // ---- Saved syllabi sidebar ----
 
+// Keep in sync with the initial markup in templates/index.html.
+const SAVED_LIST_EMPTY_STATE = `
+    <div class="empty-state">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+        <p class="empty-state-title">Nothing saved yet</p>
+        <p class="empty-state-hint">Analyze a syllabus below, then save it to keep it here.</p>
+    </div>
+`;
+
 async function loadSavedList() {
     const res = await fetch("/saved");
     const items = await res.json();
     const listDiv = document.getElementById("saved-list");
 
     if (items.length === 0) {
-        listDiv.innerHTML = `<span class="empty-note">None yet</span>`;
+        listDiv.innerHTML = SAVED_LIST_EMPTY_STATE;
         return;
     }
 
@@ -301,7 +312,8 @@ function renderResults(data) {
     let html = "";
 
     if (data.flags && data.flags.length > 0) {
-        html += `<div class="section"><h2>Watch out for</h2>`;
+        html += `<div class="section"><h2>Watch out for</h2>
+            <p class="section-hint"><strong style="color: var(--error-text);">High</strong> could seriously hurt your grade or standing. <strong style="color: var(--warning-text);">Medium</strong> is worth knowing, but less urgent.</p>`;
         data.flags.forEach(f => {
             html += `<div class="flag ${f.severity}">
                 <svg class="flag-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -344,6 +356,9 @@ function renderResults(data) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ deadlines: data.deadlines })
             });
+            const skippedCount = parseInt(calResponse.headers.get("X-Skipped-Count") || "0", 10);
+            const skippedItemsHeader = calResponse.headers.get("X-Skipped-Items");
+
             const blob = await calResponse.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -351,6 +366,15 @@ function renderResults(data) {
             a.download = "syllabus-deadlines.ics";
             a.click();
             window.URL.revokeObjectURL(url);
+
+            if (skippedCount > 0) {
+                const names = skippedItemsHeader ? decodeURIComponent(skippedItemsHeader) : "";
+                const noun = skippedCount === 1 ? "deadline" : "deadlines";
+                showToast(
+                    `${skippedCount} ${noun} couldn't be added (date not recognized)${names ? `: ${names}` : ""}.`,
+                    { variant: "warning", duration: 6000 }
+                );
+            }
         });
     }
 
@@ -451,6 +475,11 @@ const TOAST_ICONS = {
     neutral: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M4 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M4.5 7C5.5 4.7 7.6 3 10 3c3.3 0 6 2.7 6 6s-2.7 6-6 6c-2.6 0-4.8-1.6-5.6-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`,
+    warning: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M8 1.5 15 14H1L8 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M8 6.2v3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <circle cx="8" cy="11.6" r="0.8" fill="currentColor"/>
     </svg>`
 };
 
@@ -547,21 +576,45 @@ function updateDropzoneUI() {
     if (!file) {
         dropzoneEmpty.classList.remove("hidden");
         dropzoneFile.classList.add("hidden");
-        return;
+    } else {
+        const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+        if (!DROPZONE_ALLOWED_EXT.includes(ext)) {
+            fileInput.value = "";
+            dropzoneError.textContent = "Please choose a PDF or Word (.docx) file.";
+            dropzoneEmpty.classList.remove("hidden");
+            dropzoneFile.classList.add("hidden");
+        } else {
+            dropzoneFilename.textContent = file.name;
+            dropzoneEmpty.classList.add("hidden");
+            dropzoneFile.classList.remove("hidden");
+        }
     }
 
-    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-    if (!DROPZONE_ALLOWED_EXT.includes(ext)) {
-        fileInput.value = "";
-        dropzoneError.textContent = "Please choose a PDF or Word (.docx) file.";
-        dropzoneEmpty.classList.remove("hidden");
-        dropzoneFile.classList.add("hidden");
-        return;
-    }
+    updateInputAvailability();
+}
 
-    dropzoneFilename.textContent = file.name;
-    dropzoneEmpty.classList.add("hidden");
-    dropzoneFile.classList.remove("hidden");
+// ---- File-vs-paste precedence ----
+// The backend uses the file when both are present, so make that unambiguous
+// in the UI: filling one disables the other rather than silently picking.
+
+function updateInputAvailability() {
+    const fileInput = document.getElementById("syllabus-file");
+    const textarea = document.getElementById("syllabus-input");
+    const dropzoneEl = document.getElementById("dropzone");
+    const dividerLabel = document.querySelector(".divider span");
+    const dropzoneHint = document.getElementById("dropzone-hint");
+
+    const hasFile = fileInput.files.length > 0;
+    const hasText = textarea.value.trim().length > 0;
+
+    textarea.disabled = hasFile;
+    fileInput.disabled = hasText;
+    dropzoneEl.classList.toggle("dropzone-disabled", hasText);
+
+    dividerLabel.textContent = hasFile ? "text disabled while a file is selected" : "or paste it below";
+    dropzoneHint.innerHTML = hasText
+        ? "Upload is disabled while you have pasted text"
+        : `PDF or Word, or <span class="dropzone-browse">browse</span>`;
 }
 
 const dropzone = document.getElementById("dropzone");
@@ -576,6 +629,7 @@ document.getElementById("syllabus-file").addEventListener("change", updateDropzo
 ["dragenter", "dragover"].forEach(evt => {
     dropzone.addEventListener(evt, (e) => {
         e.preventDefault();
+        if (document.getElementById("syllabus-file").disabled) return;
         dropzone.classList.add("dropzone-active");
     });
 });
@@ -587,10 +641,12 @@ dropzone.addEventListener("drop", (e) => {
     e.preventDefault();
     dropzone.classList.remove("dropzone-active");
 
+    const fileInput = document.getElementById("syllabus-file");
+    if (fileInput.disabled) return;
+
     const dropped = e.dataTransfer.files[0];
     if (!dropped) return;
 
-    const fileInput = document.getElementById("syllabus-file");
     const dt = new DataTransfer();
     dt.items.add(dropped);
     fileInput.files = dt.files;
@@ -602,6 +658,8 @@ document.getElementById("dropzone-remove").addEventListener("click", (e) => {
     document.getElementById("syllabus-file").value = "";
     updateDropzoneUI();
 });
+
+document.getElementById("syllabus-input").addEventListener("input", updateInputAvailability);
 
 // ---- Analyze ----
 

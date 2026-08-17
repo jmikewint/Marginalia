@@ -90,7 +90,15 @@
                 <button id="logout-btn">Log out</button>
             </div>
             <h2>Saved Syllabi</h2>
-            <div id="saved-list"><span class="empty-note">None yet</span></div>
+            <div id="saved-list">
+                <div class="empty-state">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    </svg>
+                    <p class="empty-state-title">Nothing saved yet</p>
+                    <p class="empty-state-hint">Analyze a syllabus below, then save it to keep it here.</p>
+                </div>
+            </div>
             <button id="dashboard-btn" style="width:100%; margin-top:16px;">Dashboard</button>
         </aside>
     </div>

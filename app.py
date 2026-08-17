@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, render_template, Response, session, r
 from claude_client import analyze_syllabus
 from file_parser import extract_text_from_file
 from datetime import datetime
+from urllib.parse import quote
 import db
 import json
 import re
@@ -198,21 +199,27 @@ def export_calendar():
     if not deadlines:
         return jsonify({"error": "No deadlines to export"}), 400
 
-    ics_content = _build_ics(deadlines)
+    ics_content, skipped = _build_ics(deadlines)
 
-    return Response(
+    response = Response(
         ics_content,
         mimetype="text/calendar",
         headers={"Content-Disposition": "attachment; filename=syllabus-deadlines.ics"}
     )
+    response.headers["X-Skipped-Count"] = str(len(skipped))
+    if skipped:
+        response.headers["X-Skipped-Items"] = quote(", ".join(skipped))
+    return response
 
 
 def _build_ics(deadlines):
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Syllabus Translator//EN"]
+    skipped = []
 
     for i, deadline in enumerate(deadlines):
         date_str = _parse_date_guess(deadline.get("date", ""))
         if not date_str:
+            skipped.append(deadline.get("item") or "Deadline")
             continue
 
         lines += [
@@ -224,7 +231,7 @@ def _build_ics(deadlines):
         ]
 
     lines.append("END:VCALENDAR")
-    return "\r\n".join(lines)
+    return "\r\n".join(lines), skipped
 
 
 def _parse_date_guess(date_text):
