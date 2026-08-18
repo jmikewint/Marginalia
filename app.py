@@ -359,7 +359,7 @@ def export_calendar():
 
 
 def _build_ics(deadlines):
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Syllabus Translator//EN"]
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Marginalia//EN"]
     skipped = []
 
     for i, deadline in enumerate(deadlines):
@@ -374,7 +374,7 @@ def _build_ics(deadlines):
 
         lines += [
             "BEGIN:VEVENT",
-            f"UID:{i}-{datetime.now().timestamp()}@syllabus-translator",
+            f"UID:{i}-{datetime.now().timestamp()}@marginalia",
             f"DTSTART;VALUE=DATE:{date_str}",
             f"SUMMARY:{summary}",
             "END:VEVENT",

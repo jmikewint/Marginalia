@@ -1,4 +1,4 @@
-# Syllabus Translator
+# Marginalia
 
 A full-stack tool that extracts the important stuff from a course syllabus — grading breakdown, deadlines, and easy-to-miss policies that could hurt your grade — and presents it clearly instead of making you dig through pages of dense text.
 
