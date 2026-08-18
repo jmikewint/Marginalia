@@ -5,6 +5,7 @@ from datetime import datetime
 from urllib.parse import quote
 from flask_limiter import Limiter, Limit
 from flask_limiter.util import get_remote_address
+from anthropic import APIError
 import db
 import json
 import re
@@ -46,7 +47,7 @@ def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if "user_id" not in session:
-            return jsonify({"error": "Not logged in"}), 401
+            return jsonify({"error": "Your session has ended. Please log in again."}), 401
         return f(*args, **kwargs)
     return wrapper
 
@@ -169,16 +170,23 @@ def extract_text():
     observable stage boundary (this request completing) instead of having to
     fake a "reading file..." status during a single combined request."""
     if "syllabus_file" not in request.files or request.files["syllabus_file"].filename == "":
-        return jsonify({"error": "No file provided"}), 400
+        return jsonify({"error": "Please choose a file to upload."}), 400
 
     file = request.files["syllabus_file"]
     try:
         syllabus_text = extract_text_from_file(file)
     except ValueError as e:
+        # file_parser raises this for an unsupported extension; the message
+        # is already plain-language, so it's safe to pass through as-is.
         return jsonify({"error": str(e)}), 400
+    except Exception:
+        # Anything else here is a corrupted/unreadable PDF or DOCX (pypdf and
+        # python-docx raise their own library-specific exception types for
+        # that), not something the user can act on by name.
+        return jsonify({"error": "We couldn't read that file. It may be corrupted or password-protected — try a different file."}), 400
 
     if not syllabus_text.strip():
-        return jsonify({"error": "No syllabus text or file provided"}), 400
+        return jsonify({"error": "Please paste your syllabus text or upload a file first."}), 400
 
     return jsonify({"text": syllabus_text})
 
@@ -196,15 +204,19 @@ def analyze():
     syllabus_text = data.get("syllabus_text", "")
 
     if not syllabus_text.strip():
-        return jsonify({"error": "No syllabus text or file provided"}), 400
+        return jsonify({"error": "Please paste your syllabus text or upload a file first."}), 400
 
-    raw_result = analyze_syllabus(syllabus_text)
+    try:
+        raw_result = analyze_syllabus(syllabus_text)
+    except APIError:
+        return jsonify({"error": "We couldn't reach the analysis service. Please try again in a moment."}), 502
+
     cleaned = re.sub(r"^```json\s*|\s*```$", "", raw_result.strip())
 
     try:
         parsed = json.loads(cleaned)
     except json.JSONDecodeError:
-        return jsonify({"error": "Could not parse response"}), 500
+        return jsonify({"error": "Something went wrong analyzing that syllabus. Please try again."}), 500
 
     return jsonify(parsed)
 
@@ -215,9 +227,26 @@ def save():
     data = request.get_json(silent=True) or {}
     course_name = data.get("course_name", "").strip()
     result_data = data.get("data")
+    overwrite_id = data.get("overwrite_id")
 
     if not course_name or not result_data:
-        return jsonify({"error": "Missing course name or data"}), 400
+        return jsonify({"error": "There's no syllabus data to save. Try analyzing it again."}), 400
+
+    existing_id = db.find_syllabus_by_name(session["user_id"], course_name)
+
+    # A name collision with something other than the entry the client asked
+    # to overwrite is a real conflict; ask before replacing anything.
+    if existing_id and existing_id != overwrite_id:
+        return jsonify({
+            "error": f'You already have a syllabus saved as "{course_name}".',
+            "conflict": "duplicate_name",
+            "existing_id": existing_id
+        }), 400
+
+    if overwrite_id:
+        if not db.overwrite_syllabus(session["user_id"], overwrite_id, course_name, json.dumps(result_data)):
+            return jsonify({"error": "That saved syllabus no longer exists. Try saving again."}), 404
+        return jsonify({"id": overwrite_id, "course_name": course_name})
 
     new_id = db.save_syllabus(session["user_id"], course_name, json.dumps(result_data))
     return jsonify({"id": new_id, "course_name": course_name})
@@ -255,7 +284,7 @@ def saved_list():
 def saved_detail(syllabus_id):
     record = db.get_syllabus(session["user_id"], syllabus_id)
     if not record:
-        return jsonify({"error": "Not found"}), 404
+        return jsonify({"error": "That saved syllabus couldn't be found. It may have been deleted."}), 404
 
     record["data"] = json.loads(record["data_json"])
     del record["data_json"]

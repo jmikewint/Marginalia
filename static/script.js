@@ -373,6 +373,11 @@ async function loadSavedList() {
     async function openSavedItem(id) {
         const res = await fetch(`/saved/${id}`);
         const record = await res.json();
+        if (record.error) {
+            showToast(record.error, { variant: "warning" });
+            loadSavedList();
+            return;
+        }
         currentData = record.data;
         renderResults(currentData);
     }
@@ -640,15 +645,18 @@ function renderResults(data) {
 // ---- Save modal ----
 
 let pendingSaveData = null;
+let pendingOverwriteId = null;
 let saveModalOpener = null;
 let closeModalTimer = null;
 const MODAL_TRANSITION_MS = 180;
 
 function openSaveModal(data) {
     pendingSaveData = data;
+    pendingOverwriteId = null;
     saveModalOpener = document.activeElement;
     const input = document.getElementById("save-course-name");
     document.getElementById("save-name-error").textContent = "";
+    document.getElementById("save-modal-confirm").textContent = "Save syllabus";
     input.value = (data && data.course_name) || "";
 
     clearTimeout(closeModalTimer);
@@ -673,6 +681,7 @@ function closeSaveModal() {
     closeModalTimer = setTimeout(() => overlay.classList.add("hidden"), transitionMs(MODAL_TRANSITION_MS));
 
     pendingSaveData = null;
+    pendingOverwriteId = null;
     if (saveModalOpener) {
         saveModalOpener.focus();
         saveModalOpener = null;
@@ -717,15 +726,33 @@ async function confirmSave() {
     input.disabled = true;
 
     try {
-        await fetch("/save", {
+        const res = await fetch("/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ course_name: courseName, data: pendingSaveData })
+            body: JSON.stringify({
+                course_name: courseName,
+                data: pendingSaveData,
+                overwrite_id: pendingOverwriteId
+            })
         });
+        const responseData = await res.json();
 
+        if (responseData.error) {
+            errorDiv.textContent = responseData.error;
+            if (responseData.conflict === "duplicate_name") {
+                pendingOverwriteId = responseData.existing_id;
+                confirmBtn.textContent = "Overwrite existing";
+            }
+            return;
+        }
+
+        pendingOverwriteId = null;
+        confirmBtn.textContent = "Save syllabus";
         closeSaveModal();
         loadSavedList();
         showToast(`Saved "${courseName}"`);
+    } catch (err) {
+        errorDiv.textContent = "Couldn't save right now. Check your connection and try again.";
     } finally {
         confirmBtn.disabled = false;
         input.disabled = false;
@@ -739,6 +766,15 @@ document.getElementById("save-modal-overlay").addEventListener("click", (e) => {
 });
 document.getElementById("save-course-name").addEventListener("keydown", (e) => {
     if (e.key === "Enter") confirmSave();
+});
+document.getElementById("save-course-name").addEventListener("input", () => {
+    // Editing the name after a duplicate conflict means they're trying a
+    // different name, not still confirming the same overwrite.
+    if (pendingOverwriteId !== null) {
+        pendingOverwriteId = null;
+        document.getElementById("save-modal-confirm").textContent = "Save syllabus";
+        document.getElementById("save-name-error").textContent = "";
+    }
 });
 document.getElementById("save-modal").addEventListener("keydown", trapSaveModalTab);
 document.addEventListener("keydown", (e) => {
@@ -1017,7 +1053,7 @@ async function performAnalyze() {
         renderResults(data);
 
     } catch (err) {
-        renderError(`Couldn't reach the server: ${err.message}`);
+        renderError("Couldn't reach the server. Check your connection and try again.");
     } finally {
         btn.disabled = false;
         btn.textContent = "Analyze";

@@ -155,6 +155,33 @@ def list_syllabi(user_id):
     return [dict(row) for row in rows]
 
 
+def find_syllabus_by_name(user_id, course_name):
+    """Case-insensitive match, so "CS 2000" and "cs 2000" count as the same
+    saved entry rather than confusingly-near-duplicate rows."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT id FROM syllabi WHERE user_id = ? AND LOWER(course_name) = LOWER(?)",
+        (user_id, course_name)
+    ).fetchone()
+    conn.close()
+    return row["id"] if row else None
+
+
+def overwrite_syllabus(user_id, syllabus_id, course_name, data_json):
+    """Returns True if a row was actually updated (False if syllabus_id no
+    longer exists, e.g. deleted between showing the conflict and confirming
+    the overwrite)."""
+    conn = get_connection()
+    cursor = conn.execute(
+        "UPDATE syllabi SET course_name = ?, data_json = ?, created_at = datetime('now') WHERE id = ? AND user_id = ?",
+        (course_name, data_json, syllabus_id, user_id)
+    )
+    conn.commit()
+    updated = cursor.rowcount > 0
+    conn.close()
+    return updated
+
+
 def get_syllabus(user_id, syllabus_id):
     conn = get_connection()
     row = conn.execute(
