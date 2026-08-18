@@ -115,6 +115,8 @@ function toggleAuthMode() {
     fadeTextSwap(document.getElementById("auth-toggle"), isSignupMode
         ? "Already have an account? Log in"
         : "Don't have an account? Sign up");
+    document.getElementById("auth-email-group").classList.toggle("hidden", !isSignupMode);
+    document.getElementById("forgot-password-link").classList.toggle("hidden", isSignupMode);
     document.getElementById("auth-error").textContent = "";
 }
 
@@ -128,20 +130,22 @@ document.getElementById("auth-toggle").addEventListener("keydown", (e) => {
 
 document.getElementById("auth-submit-btn").addEventListener("click", async () => {
     const username = document.getElementById("auth-username").value.trim();
+    const email = document.getElementById("auth-email").value.trim();
     const password = document.getElementById("auth-password").value;
     const errorDiv = document.getElementById("auth-error");
     errorDiv.textContent = "";
 
-    if (!username || !password) {
-        errorDiv.textContent = "Please fill in both fields.";
+    if (!username || !password || (isSignupMode && !email)) {
+        errorDiv.textContent = "Please fill in all fields.";
         return;
     }
 
     const endpoint = isSignupMode ? "/signup" : "/login";
+    const body = isSignupMode ? { username, email, password } : { username, password };
     const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify(body)
     });
     const data = await res.json();
 
@@ -157,6 +161,137 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
     await fetch("/logout", { method: "POST" });
     transitionToAuthScreen();
 });
+
+// ---- Password recovery ----
+
+function showAuthPanel(name) {
+    ["auth-box", "forgot-box", "reset-box"].forEach(id => {
+        document.getElementById(id).classList.toggle("hidden", id !== name);
+    });
+}
+
+function backToLogin() {
+    if (window.location.search.includes("reset_token")) {
+        history.replaceState({}, "", window.location.pathname);
+    }
+    showAuthPanel("auth-box");
+}
+
+function activateLinkOnKey(el, handler) {
+    el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handler();
+        }
+    });
+}
+
+function openForgotPassword() {
+    document.getElementById("forgot-email").value = "";
+    document.getElementById("forgot-error").textContent = "";
+    document.getElementById("forgot-result").innerHTML = "";
+    showAuthPanel("forgot-box");
+}
+
+document.getElementById("forgot-password-link").addEventListener("click", openForgotPassword);
+activateLinkOnKey(document.getElementById("forgot-password-link"), openForgotPassword);
+
+document.getElementById("forgot-back").addEventListener("click", backToLogin);
+activateLinkOnKey(document.getElementById("forgot-back"), backToLogin);
+document.getElementById("reset-back").addEventListener("click", backToLogin);
+activateLinkOnKey(document.getElementById("reset-back"), backToLogin);
+
+document.getElementById("forgot-submit-btn").addEventListener("click", async () => {
+    const email = document.getElementById("forgot-email").value.trim();
+    const errorDiv = document.getElementById("forgot-error");
+    const resultDiv = document.getElementById("forgot-result");
+    const btn = document.getElementById("forgot-submit-btn");
+    errorDiv.textContent = "";
+    resultDiv.innerHTML = "";
+
+    if (!email) {
+        errorDiv.textContent = "Enter your email address.";
+        return;
+    }
+
+    btn.disabled = true;
+    try {
+        const res = await fetch("/forgot-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            errorDiv.textContent = data.error;
+            return;
+        }
+
+        resultDiv.innerHTML = `<div class="reset-link-box">
+            <a href="${data.reset_url}">${data.reset_url}</a>
+            <span class="reset-link-note">${data.note}</span>
+        </div>`;
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+let currentResetToken = null;
+
+document.getElementById("reset-submit-btn").addEventListener("click", async () => {
+    const password = document.getElementById("reset-password").value;
+    const confirmPassword = document.getElementById("reset-password-confirm").value;
+    const errorDiv = document.getElementById("reset-error");
+    const btn = document.getElementById("reset-submit-btn");
+    errorDiv.textContent = "";
+
+    if (!password || !confirmPassword) {
+        errorDiv.textContent = "Please fill in both fields.";
+        return;
+    }
+    if (password.length < 6) {
+        errorDiv.textContent = "Password must be at least 6 characters.";
+        return;
+    }
+    if (password !== confirmPassword) {
+        errorDiv.textContent = "Passwords don't match.";
+        return;
+    }
+
+    btn.disabled = true;
+    try {
+        const res = await fetch("/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: currentResetToken, password })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            errorDiv.textContent = data.error;
+            return;
+        }
+
+        history.replaceState({}, "", window.location.pathname);
+        showAuthPanel("auth-box");
+        showToast("Password updated. Log in with your new password.");
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+function checkResetTokenInUrl() {
+    const token = new URLSearchParams(window.location.search).get("reset_token");
+    if (!token) return false;
+
+    currentResetToken = token;
+    document.getElementById("reset-password").value = "";
+    document.getElementById("reset-password-confirm").value = "";
+    document.getElementById("reset-error").textContent = "";
+    showAuthPanel("reset-box");
+    return true;
+}
 
 // ---- Password visibility toggle ----
 
@@ -892,4 +1027,8 @@ async function performAnalyze() {
 document.getElementById("analyze-btn").addEventListener("click", performAnalyze);
 
 // ---- Init ----
-checkAuth();
+if (checkResetTokenInUrl()) {
+    showAuthScreen();
+} else {
+    checkAuth();
+}

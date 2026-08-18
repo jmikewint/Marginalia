@@ -62,16 +62,20 @@ def home():
 def signup():
     data = request.get_json(silent=True) or {}
     username = data.get("username", "").strip()
+    email = data.get("email", "").strip().lower()
     password = data.get("password", "")
 
-    if not username or not password:
-        return jsonify({"error": "Username and password required"}), 400
+    if not username or not email or not password:
+        return jsonify({"error": "Username, email, and password required"}), 400
+    if "@" not in email or "." not in email.split("@")[-1]:
+        return jsonify({"error": "Enter a valid email address"}), 400
     if len(password) < 6:
         return jsonify({"error": "Password must be at least 6 characters"}), 400
 
-    user_id = db.create_user(username, password)
+    user_id, conflict = db.create_user(username, email, password)
     if user_id is None:
-        return jsonify({"error": "That username is already taken"}), 400
+        message = "That email is already registered" if conflict == "email" else "That username is already taken"
+        return jsonify({"error": message}), 400
 
     session["user_id"] = user_id
     session["username"] = username
@@ -104,6 +108,56 @@ def me():
     if "user_id" in session:
         return jsonify({"username": session["username"]})
     return jsonify({"username": None})
+
+
+@app.route("/forgot-password", methods=["POST"])
+@limiter.limit(
+    "5 per hour",
+    error_message="Too many reset requests. Please wait a bit and try again.",
+)
+def forgot_password():
+    data = request.get_json(silent=True) or {}
+    email = data.get("email", "").strip().lower()
+
+    if not email:
+        return jsonify({"error": "Enter your email address."}), 400
+
+    user = db.get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "No account found with that email."}), 404
+
+    token = db.create_password_reset(user["id"])
+    # No email service is configured, so the link is handed back directly
+    # instead of sent; a real deployment would email it and drop this from
+    # the response.
+    reset_url = f"{request.host_url}?reset_token={token}"
+    return jsonify({
+        "reset_url": reset_url,
+        "note": "In a real deployment this link would be emailed to you instead of shown here. It expires in 1 hour."
+    })
+
+
+@app.route("/reset-password", methods=["POST"])
+@limiter.limit(
+    "20 per hour",
+    error_message="Too many attempts. Please wait a bit and try again.",
+)
+def reset_password():
+    data = request.get_json(silent=True) or {}
+    token = data.get("token", "").strip()
+    password = data.get("password", "")
+
+    if not token:
+        return jsonify({"error": "Missing reset token."}), 400
+    if len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+
+    user_id = db.get_valid_reset(token)
+    if user_id is None:
+        return jsonify({"error": "This reset link is invalid or has expired. Request a new one."}), 400
+
+    db.reset_password(user_id, token, password)
+    return jsonify({"success": True})
 
 
 # ---- Main app routes (now require login) ----

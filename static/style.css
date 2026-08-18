@@ -224,8 +224,8 @@ button, input, textarea { font-family: inherit; }
     flex-direction: column;
     justify-content: center;
 }
-#auth-box { width: 100%; max-width: 300px; }
-#auth-box h2 {
+.auth-panel { width: 100%; max-width: 300px; }
+.auth-panel h2 {
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 22px;
@@ -238,7 +238,7 @@ button, input, textarea { font-family: inherit; }
     color: var(--text-muted);
     margin-bottom: 6px;
 }
-#auth-box input {
+.auth-panel input {
     width: 100%;
     padding: 11px 12px;
     margin-bottom: 10px;
@@ -249,13 +249,13 @@ button, input, textarea { font-family: inherit; }
     color: var(--text);
     transition: border-color 0.15s, box-shadow 0.15s;
 }
-#auth-box input:focus-visible {
+.auth-panel input:focus-visible {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .password-field { position: relative; margin-bottom: 10px; }
-#auth-box .password-field input { padding-right: 40px; margin-bottom: 0; }
+.auth-panel .password-field input { padding-right: 40px; margin-bottom: 0; }
 #password-toggle {
     position: absolute;
     right: 4px;
@@ -281,8 +281,8 @@ button, input, textarea { font-family: inherit; }
     inset: -7px;
 }
 #password-toggle:hover { background: var(--bg); color: var(--text); }
-#auth-error { color: var(--error-text); font-size: 13px; margin-bottom: 10px; min-height: 16px; }
-#auth-toggle {
+#auth-error, #forgot-error, #reset-error { color: var(--error-text); font-size: 13px; margin-bottom: 10px; min-height: 16px; }
+.auth-link {
     position: relative;
     text-align: left;
     margin-top: 14px;
@@ -291,14 +291,34 @@ button, input, textarea { font-family: inherit; }
     cursor: pointer;
     transition: opacity 150ms var(--ease-out);
 }
-#auth-toggle::before {
+.auth-link::before {
     /* Invisible touch-target expansion, same technique as #password-toggle. */
     content: "";
     position: absolute;
     inset: -13px;
 }
-#auth-toggle:hover { color: var(--accent); }
-#auth-toggle:focus-visible { outline-offset: 3px; border-radius: 4px; }
+.auth-link:hover { color: var(--accent); }
+.auth-link:focus-visible { outline-offset: 3px; border-radius: 4px; }
+
+#forgot-password-link { margin-top: -4px; margin-bottom: 14px; }
+
+.reset-link-box {
+    margin: 4px 0 14px;
+    padding: 12px;
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    word-break: break-all;
+}
+.reset-link-box a { color: var(--accent); font-weight: 600; }
+.reset-link-note {
+    display: block;
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-style: italic;
+    word-break: normal;
+}
 
 /* ---- App shell ---- */
 
@@ -940,7 +960,7 @@ button.btn-secondary:hover { background: var(--bg); opacity: 1; }
     #auth-brand { padding: 32px 28px; }
     #auth-brand::before, #auth-brand::after { display: none; }
     #auth-form-panel { padding: 32px 28px; }
-    #auth-box { max-width: none; }
+    .auth-panel { max-width: none; }
 }
 
 @media (max-width: 700px) {

@@ -16,11 +16,15 @@
                 <p>Paste or drop a syllabus and get the deadlines, grading, and fine print that actually matter, plainly.</p>
             </div>
             <div id="auth-form-panel">
-                <div id="auth-box">
+                <div id="auth-box" class="auth-panel">
                     <h2 id="auth-title">Log In</h2>
                     <div id="auth-error" role="alert"></div>
                     <label for="auth-username" class="input-label">Username</label>
                     <input type="text" id="auth-username">
+                    <div id="auth-email-group" class="hidden">
+                        <label for="auth-email" class="input-label">Email</label>
+                        <input type="email" id="auth-email">
+                    </div>
                     <label for="auth-password" class="input-label">Password</label>
                     <div class="password-field">
                         <input type="password" id="auth-password">
@@ -31,8 +35,30 @@
                             </svg>
                         </button>
                     </div>
+                    <div id="forgot-password-link" class="auth-link" role="button" tabindex="0">Forgot password?</div>
                     <button id="auth-submit-btn" style="width:100%;">Log In</button>
-                    <div id="auth-toggle" role="button" tabindex="0">Don't have an account? Sign up</div>
+                    <div id="auth-toggle" class="auth-link" role="button" tabindex="0">Don't have an account? Sign up</div>
+                </div>
+
+                <div id="forgot-box" class="auth-panel hidden">
+                    <h2>Reset your password</h2>
+                    <div id="forgot-error" role="alert"></div>
+                    <div id="forgot-result" aria-live="polite"></div>
+                    <label for="forgot-email" class="input-label">Email</label>
+                    <input type="email" id="forgot-email">
+                    <button id="forgot-submit-btn" style="width:100%;">Get reset link</button>
+                    <div id="forgot-back" class="auth-link" role="button" tabindex="0">Back to log in</div>
+                </div>
+
+                <div id="reset-box" class="auth-panel hidden">
+                    <h2>Set a new password</h2>
+                    <div id="reset-error" role="alert"></div>
+                    <label for="reset-password" class="input-label">New password</label>
+                    <input type="password" id="reset-password">
+                    <label for="reset-password-confirm" class="input-label">Confirm new password</label>
+                    <input type="password" id="reset-password-confirm">
+                    <button id="reset-submit-btn" style="width:100%;">Set new password</button>
+                    <div id="reset-back" class="auth-link" role="button" tabindex="0">Back to log in</div>
                 </div>
             </div>
         </div>
