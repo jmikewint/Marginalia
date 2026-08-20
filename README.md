@@ -1,6 +1,7 @@
 # Marginalia
 
-**Live demo:** [syllabus-translator-env.eba-fcadaxyt.us-east-2.elasticbeanstalk.com](http://syllabus-translator-env.eba-fcadaxyt.us-east-2.elasticbeanstalk.com/)
+**[Live demo →](syllabus-translator-env.eba-fcadaxyt.us-east-2.elasticbeanstalk.com)**
+
 
 A full-stack tool that extracts the important stuff from a course syllabus — grading breakdown, deadlines, and easy-to-miss policies that could hurt your grade — and presents it clearly instead of making you dig through pages of dense text.
 
